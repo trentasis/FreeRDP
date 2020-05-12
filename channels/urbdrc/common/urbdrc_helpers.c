@@ -377,6 +377,7 @@ const char* urb_function_string(UINT16 urb)
 	}
 }
 
+#include <winpr/print.h>
 void urbdrc_dump_message(wLog* log, BOOL client, BOOL write, wStream* s)
 {
 	const char* type = write ? "WRITE" : "READ";
@@ -400,9 +401,10 @@ void urbdrc_dump_message(wLog* log, BOOL client, BOOL write, wStream* s)
 	Stream_Read_UINT32(s, FunctionId);
 	Stream_SetPosition(s, pos);
 
-	WLog_Print(log, WLOG_DEBUG,
+	WLog_Print(log, WLOG_INFO,
 	           "[%-5s] %s [%08" PRIx32 "] InterfaceId=%08" PRIx32 ", MessageId=%08" PRIx32
 	           ", FunctionId=%08" PRIx32 ", length=%" PRIdz,
 	           type, call_to_string(client, InterfaceId, FunctionId), FunctionId, InterfaceId,
 	           MessageId, FunctionId, length);
+	winpr_HexLogDump(log, WLOG_INFO, Stream_Buffer(s), Stream_Length(s));
 }

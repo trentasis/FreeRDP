@@ -772,6 +772,8 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 	urbdrc = pdev->urbdrc;
 	devDescriptor = pdev->devDescriptor;
 
+	WLog_INFO(TAG, "[%s] TextType=%" PRIu32 ", LocaleId=%" PRIu32 ", BufferSize=%" PRIu8, TextType,
+	          LocaleId, *BufferSize);
 	switch (TextType)
 	{
 		case DeviceTextDescription:
