@@ -24,6 +24,7 @@
 
 #include <winpr/sysinfo.h>
 #include <winpr/collections.h>
+#include <winpr/print.h>
 
 #include <errno.h>
 
@@ -775,9 +776,11 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 	{
 		case DeviceTextDescription:
 		{
-			BYTE data[0x100] = { 0 };
+			BYTE data[UINT8_MAX + 2] = { 0 };
+			int len = MIN(inSize, UINT8_MAX);
+
 			ret = libusb_get_string_descriptor(pdev->libusb_handle, devDescriptor->iProduct,
-			                                   LocaleId, data, 0xFF);
+			                                   LocaleId, data, len);
 			/* The returned data in the buffer is:
 			 * 1 byte  length of following data
 			 * 1 byte  descriptor type, must be 0x03 for strings
@@ -786,15 +789,21 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 			slen = data[0];
 			locale = data[1];
 
+			WLog_WARN(TAG,
+			          "------ LocaleId=%" PRIu16 ", iProduct=%" PRIu16 ", inSize=%" PRIu8
+			          " dumping %s",
+			          LocaleId, devDescriptor->idProduct, inSize, __FUNCTION__);
+			winpr_HexDump(TAG, WLOG_WARN, data, sizeof(data));
+			WLog_WARN(TAG, "----------------------------------------");
 			if ((ret <= 0) || (ret < 4) || (slen < 4) || (locale != LIBUSB_DT_STRING) ||
-			    (ret > UINT8_MAX))
+			    (ret > inSize))
 			{
 				WLog_Print(urbdrc->log, WLOG_DEBUG,
 				           "libusb_get_string_descriptor: "
 				           "ERROR num %d, iProduct: %" PRIu8 "!",
 				           ret, devDescriptor->iProduct);
 
-				len = MIN(sizeof(strDesc), inSize);
+				len = MIN(sizeof(strDesc), inSize / sizeof(WCHAR));
 				for (i = 0; i < len; i++)
 					text[i] = (WCHAR)strDesc[i];
 
