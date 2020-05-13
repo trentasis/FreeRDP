@@ -754,7 +754,7 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 {
 	UDEVICE* pdev = (UDEVICE*)idev;
 	LIBUSB_DEVICE_DESCRIPTOR* devDescriptor;
-	const char* strDesc = "Generic Usb String";
+	const char strDesc[] = "Generic Usb String";
 	char deviceLocation[25] = { 0 };
 	BYTE bus_number;
 	BYTE device_address;
