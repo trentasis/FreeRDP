@@ -778,8 +778,11 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 	{
 		case DeviceTextDescription:
 		{
-			BYTE data[UINT16_MAX] = { 0 };
-			int len = UINT16_MAX;
+			/*
+			 * MAX_CTRL_BUFFER_LENGTH 4096 for control transfers
+			 */
+			BYTE data[4096] = { 0 };
+			int len = 4096;
 
 			ret = libusb_get_string_descriptor(pdev->libusb_handle, devDescriptor->iProduct,
 			                                   LocaleId, data, len);
@@ -799,12 +802,12 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 			WLog_WARN(TAG, "----------------------------------------");
 			if ((ret <= 2) || (slen <= 2) || (locale != LIBUSB_DT_STRING))
 			{
-				WLog_Print(urbdrc->log, WLOG_DEBUG,
+				WLog_Print(urbdrc->log, WLOG_INFO,
 				           "libusb_get_string_descriptor: "
 				           "ERROR num %d, iProduct: %" PRIu8 "!",
 				           ret, devDescriptor->iProduct);
 
-				len = MIN(sizeof(strDesc) - 1, (inSize - 1) / sizeof(WCHAR));
+				len = MIN(sizeof(strDesc), inSize / sizeof(WCHAR));
 				for (i = 0; i < len; i++)
 					text[i] = (WCHAR)strDesc[i];
 				text[len - 1] = L'\0';
