@@ -797,7 +797,7 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 			          LocaleId, devDescriptor->idProduct, inSize, __FUNCTION__);
 			winpr_HexDump(TAG, WLOG_WARN, data, sizeof(data));
 			WLog_WARN(TAG, "----------------------------------------");
-			if ((ret <= 0) || (ret < 4) || (slen < 4) || (locale != LIBUSB_DT_STRING) ||
+            if ((ret <= 0) || (ret <= 2) || (slen <= 2) || (locale != LIBUSB_DT_STRING) ||
 			    (ret > inSize))
 			{
 				WLog_Print(urbdrc->log, WLOG_DEBUG,
