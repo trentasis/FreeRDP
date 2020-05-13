@@ -812,11 +812,11 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 			else
 			{
 				size_t len = MIN(inSize, slen);
-				memcpy(Text, &data[2], len);
+				memcpy(text, &data[2], len);
 
 				/* Just as above, the returned WCHAR string should be '\0'
 				 * terminated, but never trust hardware to conform to specs... */
-				Text[len - 1] = L'\0';
+				text[len - 1] = L'\0';
 			}
 
 			len = _wcsnlen(text, len) + 1;
