@@ -16,9 +16,18 @@
 # limitations under the License.
 
 # Servers
+include(CMakeDependentOption)
+
+CMAKE_DEPENDENT_OPTION(WITH_SHADOW "Compile with shadow server" ON	"WITH_SERVER" OFF)
+CMAKE_DEPENDENT_OPTION(WITH_PROXY "Compile with proxy server" ON	"WITH_SERVER" OFF)
 
 add_subdirectory(common)
-add_subdirectory(shadow)
+if (WITH_SHADOW)
+	add_subdirectory(shadow)
+endif()
+if (WITH_PROXY)
+	add_subdirectory(proxy)
+endif()
 
 if(FREERDP_VENDOR)
 	if(WITH_SAMPLE)
@@ -30,7 +39,7 @@ if(FREERDP_VENDOR)
 			add_subdirectory(Mac)
 		endif()
 	else()
-		#add_subdirectory(Windows)
+                add_subdirectory(Windows)
 	endif()
 
 	if(NOT DEFINED WITH_FREERDS)

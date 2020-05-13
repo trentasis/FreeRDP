@@ -18,21 +18,19 @@
 winpr_module_add(
 	address.c
 	barrier.c
-	condition.c
 	critical.c
 	event.c
 	init.c
 	mutex.c
 	semaphore.c
 	sleep.c
-	srw.c
 	synch.h
 	timer.c
 	wait.c)
 
 if(FREEBSD)
 	winpr_include_directory_add(${EPOLLSHIM_INCLUDE_DIR})
-	winpr_library_add(${EPOLLSHIM_LIBS})
+	winpr_library_add_private(${EPOLLSHIM_LIBS})
 endif()
 
 if(BUILD_TESTING)

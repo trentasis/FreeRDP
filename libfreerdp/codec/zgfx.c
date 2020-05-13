@@ -44,71 +44,100 @@
 
 struct _ZGFX_TOKEN
 {
-	int prefixLength;
-	int prefixCode;
-	int valueBits;
-	int tokenType;
+	UINT32 prefixLength;
+	UINT32 prefixCode;
+	UINT32 valueBits;
+	UINT32 tokenType;
 	UINT32 valueBase;
 };
 typedef struct _ZGFX_TOKEN ZGFX_TOKEN;
 
-static const ZGFX_TOKEN ZGFX_TOKEN_TABLE[] =
+struct _ZGFX_CONTEXT
 {
+	BOOL Compressor;
+
+	const BYTE* pbInputCurrent;
+	const BYTE* pbInputEnd;
+
+	UINT32 bits;
+	UINT32 cBitsRemaining;
+	UINT32 BitsCurrent;
+	UINT32 cBitsCurrent;
+
+	BYTE OutputBuffer[65536];
+	UINT32 OutputCount;
+
+	BYTE HistoryBuffer[2500000];
+	UINT32 HistoryIndex;
+	UINT32 HistoryBufferSize;
+};
+
+static const ZGFX_TOKEN ZGFX_TOKEN_TABLE[] = {
 	// len code vbits type  vbase
-	{  1,    0,   8,   0,           0 },    // 0
-	{  5,   17,   5,   1,           0 },    // 10001
-	{  5,   18,   7,   1,          32 },    // 10010
-	{  5,   19,   9,   1,         160 },    // 10011
-	{  5,   20,  10,   1,         672 },    // 10100
-	{  5,   21,  12,   1,        1696 },    // 10101
-	{  5,   24,   0,   0,  0x00       },    // 11000
-	{  5,   25,   0,   0,  0x01       },    // 11001
-	{  6,   44,  14,   1,        5792 },    // 101100
-	{  6,   45,  15,   1,       22176 },    // 101101
-	{  6,   52,   0,   0,  0x02       },    // 110100
-	{  6,   53,   0,   0,  0x03       },    // 110101
-	{  6,   54,   0,   0,  0xFF       },    // 110110
-	{  7,   92,  18,   1,       54944 },    // 1011100
-	{  7,   93,  20,   1,      317088 },    // 1011101
-	{  7,  110,   0,   0,  0x04       },    // 1101110
-	{  7,  111,   0,   0,  0x05       },    // 1101111
-	{  7,  112,   0,   0,  0x06       },    // 1110000
-	{  7,  113,   0,   0,  0x07       },    // 1110001
-	{  7,  114,   0,   0,  0x08       },    // 1110010
-	{  7,  115,   0,   0,  0x09       },    // 1110011
-	{  7,  116,   0,   0,  0x0A       },    // 1110100
-	{  7,  117,   0,   0,  0x0B       },    // 1110101
-	{  7,  118,   0,   0,  0x3A       },    // 1110110
-	{  7,  119,   0,   0,  0x3B       },    // 1110111
-	{  7,  120,   0,   0,  0x3C       },    // 1111000
-	{  7,  121,   0,   0,  0x3D       },    // 1111001
-	{  7,  122,   0,   0,  0x3E       },    // 1111010
-	{  7,  123,   0,   0,  0x3F       },    // 1111011
-	{  7,  124,   0,   0,  0x40       },    // 1111100
-	{  7,  125,   0,   0,  0x80       },    // 1111101
-	{  8,  188,  20,   1,     1365664 },    // 10111100
-	{  8,  189,  21,   1,     2414240 },    // 10111101
-	{  8,  252,   0,   0,  0x0C       },    // 11111100
-	{  8,  253,   0,   0,  0x38       },    // 11111101
-	{  8,  254,   0,   0,  0x39       },    // 11111110
-	{  8,  255,   0,   0,  0x66       },    // 11111111
-	{  9,  380,  22,   1,     4511392 },    // 101111100
-	{  9,  381,  23,   1,     8705696 },    // 101111101
-	{  9,  382,  24,   1,    17094304 },    // 101111110
+	{ 1, 0, 8, 0, 0 },           // 0
+	{ 5, 17, 5, 1, 0 },          // 10001
+	{ 5, 18, 7, 1, 32 },         // 10010
+	{ 5, 19, 9, 1, 160 },        // 10011
+	{ 5, 20, 10, 1, 672 },       // 10100
+	{ 5, 21, 12, 1, 1696 },      // 10101
+	{ 5, 24, 0, 0, 0x00 },       // 11000
+	{ 5, 25, 0, 0, 0x01 },       // 11001
+	{ 6, 44, 14, 1, 5792 },      // 101100
+	{ 6, 45, 15, 1, 22176 },     // 101101
+	{ 6, 52, 0, 0, 0x02 },       // 110100
+	{ 6, 53, 0, 0, 0x03 },       // 110101
+	{ 6, 54, 0, 0, 0xFF },       // 110110
+	{ 7, 92, 18, 1, 54944 },     // 1011100
+	{ 7, 93, 20, 1, 317088 },    // 1011101
+	{ 7, 110, 0, 0, 0x04 },      // 1101110
+	{ 7, 111, 0, 0, 0x05 },      // 1101111
+	{ 7, 112, 0, 0, 0x06 },      // 1110000
+	{ 7, 113, 0, 0, 0x07 },      // 1110001
+	{ 7, 114, 0, 0, 0x08 },      // 1110010
+	{ 7, 115, 0, 0, 0x09 },      // 1110011
+	{ 7, 116, 0, 0, 0x0A },      // 1110100
+	{ 7, 117, 0, 0, 0x0B },      // 1110101
+	{ 7, 118, 0, 0, 0x3A },      // 1110110
+	{ 7, 119, 0, 0, 0x3B },      // 1110111
+	{ 7, 120, 0, 0, 0x3C },      // 1111000
+	{ 7, 121, 0, 0, 0x3D },      // 1111001
+	{ 7, 122, 0, 0, 0x3E },      // 1111010
+	{ 7, 123, 0, 0, 0x3F },      // 1111011
+	{ 7, 124, 0, 0, 0x40 },      // 1111100
+	{ 7, 125, 0, 0, 0x80 },      // 1111101
+	{ 8, 188, 20, 1, 1365664 },  // 10111100
+	{ 8, 189, 21, 1, 2414240 },  // 10111101
+	{ 8, 252, 0, 0, 0x0C },      // 11111100
+	{ 8, 253, 0, 0, 0x38 },      // 11111101
+	{ 8, 254, 0, 0, 0x39 },      // 11111110
+	{ 8, 255, 0, 0, 0x66 },      // 11111111
+	{ 9, 380, 22, 1, 4511392 },  // 101111100
+	{ 9, 381, 23, 1, 8705696 },  // 101111101
+	{ 9, 382, 24, 1, 17094304 }, // 101111110
 	{ 0 }
 };
 
-#define zgfx_GetBits(_zgfx, _nbits) \
-	while (_zgfx->cBitsCurrent < _nbits) { \
-		_zgfx->BitsCurrent <<= 8; \
-		if (_zgfx->pbInputCurrent < _zgfx->pbInputEnd) \
-			_zgfx->BitsCurrent += *(_zgfx->pbInputCurrent)++; \
-		_zgfx->cBitsCurrent += 8; \
-	} \
-	_zgfx->cBitsRemaining -= _nbits; \
-	_zgfx->cBitsCurrent -= _nbits; \
-	_zgfx->bits = _zgfx->BitsCurrent >> _zgfx->cBitsCurrent; \
+static INLINE BOOL zgfx_GetBits(ZGFX_CONTEXT* _zgfx, UINT32 _nbits)
+{
+	if (!_zgfx)
+		return FALSE;
+
+	while (_zgfx->cBitsCurrent < _nbits)
+	{
+		_zgfx->BitsCurrent <<= 8;
+
+		if (_zgfx->pbInputCurrent < _zgfx->pbInputEnd)
+			_zgfx->BitsCurrent += *(_zgfx->pbInputCurrent)++;
+
+		_zgfx->cBitsCurrent += 8;
+	}
+
+	_zgfx->cBitsRemaining -= _nbits;
+	_zgfx->cBitsCurrent -= _nbits;
+	_zgfx->bits = _zgfx->BitsCurrent >> _zgfx->cBitsCurrent;
 	_zgfx->BitsCurrent &= ((1 << _zgfx->cBitsCurrent) - 1);
+	return TRUE;
+}
 
 static void zgfx_history_buffer_ring_write(ZGFX_CONTEXT* zgfx, const BYTE* src, size_t count)
 {
@@ -145,16 +174,16 @@ static void zgfx_history_buffer_ring_read(ZGFX_CONTEXT* zgfx, int offset, BYTE* 
 {
 	UINT32 front;
 	UINT32 index;
-	UINT32 bytes;
+	INT32 bytes;
 	UINT32 valid;
-	UINT32 bytesLeft;
+	INT32 bytesLeft;
 	BYTE* dptr = dst;
 	BYTE* origDst = dst;
 
-	if (count <= 0)
+	if ((count <= 0) || (count > INT32_MAX))
 		return;
 
-	bytesLeft = count;
+	bytesLeft = (INT32)count;
 	index = (zgfx->HistoryIndex + zgfx->HistoryBufferSize - offset) % zgfx->HistoryBufferSize;
 	bytes = MIN(bytesLeft, offset);
 
@@ -185,24 +214,29 @@ static void zgfx_history_buffer_ring_read(ZGFX_CONTEXT* zgfx, int offset, BYTE* 
 		CopyMemory(dptr, origDst, bytes);
 		dptr += bytes;
 		valid <<= 1;
-	}
-	while ((bytesLeft -= bytes) > 0);
+	} while ((bytesLeft -= bytes) > 0);
 }
 
 static BOOL zgfx_decompress_segment(ZGFX_CONTEXT* zgfx, wStream* stream, size_t segmentSize)
 {
 	BYTE c;
 	BYTE flags;
-	int extra;
+	UINT32 extra = 0;
 	int opIndex;
-	int haveBits;
-	int inPrefix;
+	UINT32 haveBits;
+	UINT32 inPrefix;
 	UINT32 count;
 	UINT32 distance;
 	BYTE* pbSegment;
-	size_t cbSegment = segmentSize - 1;
+	size_t cbSegment;
 
-	if ((Stream_GetRemainingLength(stream) < segmentSize) || (segmentSize < 1))
+	if (!zgfx || !stream)
+		return FALSE;
+
+	cbSegment = segmentSize - 1;
+
+	if ((Stream_GetRemainingLength(stream) < segmentSize) || (segmentSize < 1) ||
+	    (segmentSize > UINT32_MAX))
 		return FALSE;
 
 	Stream_Read_UINT8(stream, flags); /* header (1 byte) */
@@ -213,6 +247,10 @@ static BOOL zgfx_decompress_segment(ZGFX_CONTEXT* zgfx, wStream* stream, size_t 
 	if (!(flags & PACKET_COMPRESSED))
 	{
 		zgfx_history_buffer_ring_write(zgfx, pbSegment, cbSegment);
+
+		if (cbSegment > sizeof(zgfx->OutputBuffer))
+			return FALSE;
+
 		CopyMemory(zgfx->OutputBuffer, pbSegment, cbSegment);
 		zgfx->OutputCount = cbSegment;
 		return TRUE;
@@ -251,6 +289,9 @@ static BOOL zgfx_decompress_segment(ZGFX_CONTEXT* zgfx, wStream* stream, size_t 
 					if (++zgfx->HistoryIndex == zgfx->HistoryBufferSize)
 						zgfx->HistoryIndex = 0;
 
+					if (zgfx->OutputCount >= sizeof(zgfx->OutputBuffer))
+						return FALSE;
+
 					zgfx->OutputBuffer[zgfx->OutputCount++] = c;
 				}
 				else
@@ -284,8 +325,13 @@ static BOOL zgfx_decompress_segment(ZGFX_CONTEXT* zgfx, wStream* stream, size_t 
 							count += zgfx->bits;
 						}
 
-						zgfx_history_buffer_ring_read(zgfx, distance, &(zgfx->OutputBuffer[zgfx->OutputCount]), count);
-						zgfx_history_buffer_ring_write(zgfx, &(zgfx->OutputBuffer[zgfx->OutputCount]), count);
+						if (count > sizeof(zgfx->OutputBuffer) - zgfx->OutputCount)
+							return FALSE;
+
+						zgfx_history_buffer_ring_read(
+						    zgfx, distance, &(zgfx->OutputBuffer[zgfx->OutputCount]), count);
+						zgfx_history_buffer_ring_write(
+						    zgfx, &(zgfx->OutputBuffer[zgfx->OutputCount]), count);
 						zgfx->OutputCount += count;
 					}
 					else
@@ -296,7 +342,12 @@ static BOOL zgfx_decompress_segment(ZGFX_CONTEXT* zgfx, wStream* stream, size_t 
 						zgfx->cBitsRemaining -= zgfx->cBitsCurrent;
 						zgfx->cBitsCurrent = 0;
 						zgfx->BitsCurrent = 0;
-						CopyMemory(&(zgfx->OutputBuffer[zgfx->OutputCount]), zgfx->pbInputCurrent, count);
+
+						if (count > sizeof(zgfx->OutputBuffer) - zgfx->OutputCount)
+							return FALSE;
+
+						CopyMemory(&(zgfx->OutputBuffer[zgfx->OutputCount]), zgfx->pbInputCurrent,
+						           count);
 						zgfx_history_buffer_ring_write(zgfx, zgfx->pbInputCurrent, count);
 						zgfx->pbInputCurrent += count;
 						zgfx->cBitsRemaining -= (8 * count);
@@ -317,8 +368,8 @@ int zgfx_decompress(ZGFX_CONTEXT* zgfx, const BYTE* pSrcData, UINT32 SrcSize, BY
 {
 	int status = -1;
 	BYTE descriptor;
-
 	wStream* stream = Stream_New((BYTE*)pSrcData, SrcSize);
+
 	if (!stream)
 		return -1;
 
@@ -333,8 +384,9 @@ int zgfx_decompress(ZGFX_CONTEXT* zgfx, const BYTE* pSrcData, UINT32 SrcSize, BY
 			goto fail;
 
 		*ppDstData = NULL;
+
 		if (zgfx->OutputCount > 0)
-			*ppDstData = (BYTE*) malloc(zgfx->OutputCount);
+			*ppDstData = (BYTE*)malloc(zgfx->OutputCount);
 
 		if (!*ppDstData)
 			goto fail;
@@ -349,17 +401,18 @@ int zgfx_decompress(ZGFX_CONTEXT* zgfx, const BYTE* pSrcData, UINT32 SrcSize, BY
 		UINT16 segmentCount;
 		UINT32 uncompressedSize;
 		BYTE* pConcatenated;
+		size_t used = 0;
 
 		if (Stream_GetRemainingLength(stream) < 6)
 			goto fail;
 
-		Stream_Read_UINT16(stream, segmentCount); /* segmentCount (2 bytes) */
+		Stream_Read_UINT16(stream, segmentCount);     /* segmentCount (2 bytes) */
 		Stream_Read_UINT32(stream, uncompressedSize); /* uncompressedSize (4 bytes) */
 
 		if (Stream_GetRemainingLength(stream) < segmentCount * sizeof(UINT32))
 			goto fail;
 
-		pConcatenated = (BYTE*) malloc(uncompressedSize);
+		pConcatenated = (BYTE*)malloc(uncompressedSize);
 
 		if (!pConcatenated)
 			goto fail;
@@ -377,8 +430,15 @@ int zgfx_decompress(ZGFX_CONTEXT* zgfx, const BYTE* pSrcData, UINT32 SrcSize, BY
 			if (!zgfx_decompress_segment(zgfx, stream, segmentSize))
 				goto fail;
 
+			if (zgfx->OutputCount > UINT32_MAX - used)
+				goto fail;
+
+			if (used + zgfx->OutputCount > uncompressedSize)
+				goto fail;
+
 			CopyMemory(pConcatenated, zgfx->OutputBuffer, zgfx->OutputCount);
 			pConcatenated += zgfx->OutputCount;
+			used += zgfx->OutputCount;
 		}
 	}
 	else
@@ -403,7 +463,7 @@ static BOOL zgfx_compress_segment(ZGFX_CONTEXT* zgfx, wStream* s, const BYTE* pS
 	}
 
 	(*pFlags) |= ZGFX_PACKET_COMPR_TYPE_RDP8; /* RDP 8.0 compression format */
-	Stream_Write_UINT8(s, (*pFlags)); /* header (1 byte) */
+	Stream_Write_UINT8(s, (*pFlags));         /* header (1 byte) */
 	Stream_Write(s, pSrcData, SrcSize);
 	return TRUE;
 }
@@ -442,8 +502,8 @@ int zgfx_compress_to_stream(ZGFX_CONTEXT* zgfx, wStream* sDst, const BYTE* pUnco
 		{
 			/* First fragment */
 			/* descriptor (1 byte) */
-			Stream_Write_UINT8(sDst, (totalLength == 0) ?
-			                   ZGFX_SEGMENTED_SINGLE : ZGFX_SEGMENTED_MULTIPART);
+			Stream_Write_UINT8(sDst, (totalLength == 0) ? ZGFX_SEGMENTED_SINGLE
+			                                            : ZGFX_SEGMENTED_MULTIPART);
 
 			if (totalLength > 0)
 			{
@@ -502,7 +562,6 @@ int zgfx_compress(ZGFX_CONTEXT* zgfx, const BYTE* pSrcData, UINT32 SrcSize, BYTE
 	return status;
 }
 
-
 void zgfx_context_reset(ZGFX_CONTEXT* zgfx, BOOL flush)
 {
 	zgfx->HistoryIndex = 0;
@@ -511,7 +570,7 @@ void zgfx_context_reset(ZGFX_CONTEXT* zgfx, BOOL flush)
 ZGFX_CONTEXT* zgfx_context_new(BOOL Compressor)
 {
 	ZGFX_CONTEXT* zgfx;
-	zgfx = (ZGFX_CONTEXT*) calloc(1, sizeof(ZGFX_CONTEXT));
+	zgfx = (ZGFX_CONTEXT*)calloc(1, sizeof(ZGFX_CONTEXT));
 
 	if (zgfx)
 	{
@@ -527,4 +586,3 @@ void zgfx_context_free(ZGFX_CONTEXT* zgfx)
 {
 	free(zgfx);
 }
-

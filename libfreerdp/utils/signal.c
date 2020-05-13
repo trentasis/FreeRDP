@@ -23,6 +23,7 @@
 
 #include <stddef.h>
 #include <errno.h>
+#include <string.h>
 
 #include <winpr/crt.h>
 
@@ -52,7 +53,7 @@ static void fatal_handler(int signum)
 {
 	struct sigaction default_sigaction;
 	sigset_t this_mask;
-	WLog_DBG(TAG, "fatal_handler: signum=%d", signum);
+	WLog_INFO(TAG, "Caught signal '%s' [%d]", strsignal(signum), signum);
 
 	if (terminal_needs_reset)
 		tcsetattr(terminal_fildes, TCSAFLUSH, &orig_flags);
@@ -67,45 +68,27 @@ static void fatal_handler(int signum)
 	raise(signum);
 }
 
-const int fatal_signals[] =
-{
-	SIGABRT,
-	SIGALRM,
-	SIGBUS,
-	SIGFPE,
-	SIGHUP,
-	SIGILL,
-	SIGINT,
-	SIGKILL,
-	SIGQUIT,
-	SIGSEGV,
-	SIGSTOP,
-	SIGTERM,
-	SIGTSTP,
-	SIGTTIN,
-	SIGTTOU,
-	SIGUSR1,
-	SIGUSR2,
+const int fatal_signals[] = { SIGABRT,   SIGALRM, SIGBUS,  SIGFPE,  SIGHUP,  SIGILL,
+	                          SIGINT,    SIGKILL, SIGQUIT, SIGSEGV, SIGSTOP, SIGTERM,
+	                          SIGTSTP,   SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2,
 #ifdef SIGPOLL
-	SIGPOLL,
+	                          SIGPOLL,
 #endif
 #ifdef SIGPROF
-	SIGPROF,
+	                          SIGPROF,
 #endif
 #ifdef SIGSYS
-	SIGSYS,
+	                          SIGSYS,
 #endif
-	SIGTRAP,
+	                          SIGTRAP,
 #ifdef SIGVTALRM
-	SIGVTALRM,
+	                          SIGVTALRM,
 #endif
-	SIGXCPU,
-	SIGXFSZ
-};
+	                          SIGXCPU,   SIGXFSZ };
 
 int freerdp_handle_signals(void)
 {
-	int signal_index;
+	size_t signal_index;
 	sigset_t orig_set;
 	struct sigaction orig_sigaction;
 	struct sigaction fatal_sigaction;
@@ -114,7 +97,7 @@ int freerdp_handle_signals(void)
 	sigdelset(&(fatal_sigaction.sa_mask), SIGCONT);
 	pthread_sigmask(SIG_BLOCK, &(fatal_sigaction.sa_mask), &orig_set);
 	fatal_sigaction.sa_handler = fatal_handler;
-	fatal_sigaction.sa_flags  = 0;
+	fatal_sigaction.sa_flags = 0;
 
 	for (signal_index = 0; signal_index < ARRAYSIZE(fatal_signals); signal_index++)
 	{

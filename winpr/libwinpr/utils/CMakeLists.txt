@@ -25,11 +25,9 @@ set(${MODULE_PREFIX}_COLLECTIONS_SRCS
 	collections/BitStream.c
 	collections/Reference.c
 	collections/ArrayList.c
-	collections/Dictionary.c
 	collections/LinkedList.c
 	collections/HashTable.c
 	collections/ListDictionary.c
-	collections/KeyValuePair.c
 	collections/CountdownEvent.c
 	collections/BufferPool.c
 	collections/ObjectPool.c
@@ -66,7 +64,7 @@ if (LIBSYSTEMD_FOUND)
 	)
 
 	winpr_include_directory_add(${LIBSYSTEMD_INCLUDE_DIR})
-	winpr_library_add(${LIBSYSTEMD_LIBRARY})
+	winpr_library_add_private(${LIBSYSTEMD_LIBRARY})
 endif()
 
 set(${MODULE_PREFIX}_WLOG_SRCS
@@ -76,7 +74,6 @@ set(${MODULE_PREFIX}_WLOG_SRCS
 	wlog/Layout.h
 	wlog/Message.c
 	wlog/Message.h
-	wlog/TextMessage.c
 	wlog/DataMessage.c
 	wlog/DataMessage.h
 	wlog/ImageMessage.c
@@ -130,24 +127,24 @@ winpr_include_directory_add(
 
 if(OPENSSL_FOUND)
 	winpr_include_directory_add(${OPENSSL_INCLUDE_DIR})
-	winpr_library_add(${OPENSSL_LIBRARIES})
+	winpr_library_add_private(${OPENSSL_LIBRARIES})
 endif()
 
 if(MBEDTLS_FOUND)
 	winpr_include_directory_add(${MBEDTLS_INCLUDE_DIR})
-	winpr_library_add(${MBEDTLS_LIBRARIES})
+	winpr_library_add_private(${MBEDTLS_LIBRARIES})
 endif()
 
 if(UNIX)
-	winpr_library_add(m)
+	winpr_library_add_private(m)
 endif()
 
 if((FREEBSD) AND (NOT KFREEBSD))
-	winpr_library_add(execinfo)
+	winpr_library_add_private(execinfo)
 endif()
 
 if(WIN32)
-	winpr_library_add(Dbghelp)
+	winpr_library_add_public(dbghelp)
 endif()
 
 if(BUILD_TESTING)

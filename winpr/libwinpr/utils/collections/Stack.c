@@ -23,6 +23,16 @@
 
 #include <winpr/collections.h>
 
+struct _wStack
+{
+	size_t size;
+	size_t capacity;
+	void** array;
+	CRITICAL_SECTION lock;
+	BOOL synchronized;
+	wObject object;
+};
+
 /**
  * C equivalent of the C# Stack Class:
  * http://msdn.microsoft.com/en-us/library/system.collections.stack.aspx
@@ -36,9 +46,9 @@
  * Gets the number of elements contained in the Stack.
  */
 
-int Stack_Count(wStack* stack)
+size_t Stack_Count(wStack* stack)
 {
-	int ret;
+	size_t ret;
 
 	if (stack->synchronized)
 		EnterCriticalSection(&stack->lock);
@@ -60,6 +70,13 @@ BOOL Stack_IsSynchronized(wStack* stack)
 	return stack->synchronized;
 }
 
+wObject* Stack_Object(wStack* stack)
+{
+	if (!stack)
+		return NULL;
+	return &stack->object;
+}
+
 /**
  * Methods
  */
@@ -70,7 +87,7 @@ BOOL Stack_IsSynchronized(wStack* stack)
 
 void Stack_Clear(wStack* stack)
 {
-	int index;
+	size_t index;
 
 	if (stack->synchronized)
 		EnterCriticalSection(&stack->lock);
@@ -93,9 +110,9 @@ void Stack_Clear(wStack* stack)
  * Determines whether an element is in the Stack.
  */
 
-BOOL Stack_Contains(wStack* stack, void* obj)
+BOOL Stack_Contains(wStack* stack, const void* obj)
 {
-	int i;
+	size_t i;
 	BOOL found = FALSE;
 
 	if (stack->synchronized)
@@ -127,19 +144,19 @@ void Stack_Push(wStack* stack, void* obj)
 
 	if ((stack->size + 1) >= stack->capacity)
 	{
-		int new_cap;
-		void **new_arr;
+		const size_t new_cap = stack->capacity * 2;
+		void** new_arr = (void**)realloc(stack->array, sizeof(void*) * new_cap);
 
-		new_cap = stack->capacity * 2;
-		new_arr = (void**) realloc(stack->array, sizeof(void*) * new_cap);
 		if (!new_arr)
-			return;
+			goto end;
+
 		stack->array = new_arr;
 		stack->capacity = new_cap;
 	}
 
 	stack->array[(stack->size)++] = obj;
 
+end:
 	if (stack->synchronized)
 		LeaveCriticalSection(&stack->lock);
 }
@@ -184,8 +201,7 @@ void* Stack_Peek(wStack* stack)
 	return obj;
 }
 
-
-static BOOL default_stack_equals(void *obj1, void *obj2)
+static BOOL default_stack_equals(const void* obj1, const void* obj2)
 {
 	return (obj1 == obj2);
 }
@@ -197,28 +213,25 @@ static BOOL default_stack_equals(void *obj1, void *obj2)
 wStack* Stack_New(BOOL synchronized)
 {
 	wStack* stack = NULL;
+	stack = (wStack*)calloc(1, sizeof(wStack));
 
-	stack = (wStack *)calloc(1, sizeof(wStack));
 	if (!stack)
 		return NULL;
 
 	stack->object.fnObjectEquals = default_stack_equals;
 	stack->synchronized = synchronized;
-
 	stack->capacity = 32;
-	stack->array = (void**) calloc(stack->capacity, sizeof(void*));
+	stack->array = (void**)calloc(stack->capacity, sizeof(void*));
+
 	if (!stack->array)
 		goto out_free;
 
 	if (stack->synchronized && !InitializeCriticalSectionAndSpinCount(&stack->lock, 4000))
-			goto out_free_array;
+		goto out_free;
 
 	return stack;
-
-out_free_array:
-	free(stack->array);
 out_free:
-	free(stack);
+	Stack_Free(stack);
 	return NULL;
 }
 
@@ -230,7 +243,6 @@ void Stack_Free(wStack* stack)
 			DeleteCriticalSection(&stack->lock);
 
 		free(stack->array);
-
 		free(stack);
 	}
 }

@@ -30,14 +30,14 @@
 
 static BOOL NoneHandleCloseHandle(HANDLE handle)
 {
-	WINPR_NONE_HANDLE* none = (WINPR_NONE_HANDLE*) handle;
+	WINPR_NONE_HANDLE* none = (WINPR_NONE_HANDLE*)handle;
 	free(none);
 	return TRUE;
 }
 
 static BOOL NoneHandleIsHandle(HANDLE handle)
 {
-	WINPR_NONE_HANDLE* none = (WINPR_NONE_HANDLE*) handle;
+	WINPR_NONE_HANDLE* none = (WINPR_NONE_HANDLE*)handle;
 
 	if (!none || none->Type != HANDLE_TYPE_NONE)
 	{
@@ -56,23 +56,36 @@ static int NoneHandleGetFd(HANDLE handle)
 	return -1;
 }
 
-static HANDLE_OPS ops = {
-		NoneHandleIsHandle,
-		NoneHandleCloseHandle,
-		NoneHandleGetFd,
-		NULL /* CleanupHandle */
-};
+static HANDLE_OPS ops = { NoneHandleIsHandle,
+	                      NoneHandleCloseHandle,
+	                      NoneHandleGetFd,
+	                      NULL, /* CleanupHandle */
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL,
+	                      NULL };
 
 HANDLE CreateNoneHandle()
 {
 	WINPR_NONE_HANDLE* none;
-	none = (WINPR_NONE_HANDLE*) calloc(1, sizeof(WINPR_NONE_HANDLE));
+	none = (WINPR_NONE_HANDLE*)calloc(1, sizeof(WINPR_NONE_HANDLE));
 
 	if (!none)
 		return NULL;
 
 	none->ops = &ops;
-
 	return (HANDLE)none;
 }
 

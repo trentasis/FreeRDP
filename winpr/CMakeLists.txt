@@ -46,13 +46,35 @@ include(CheckCCompilerFlag)
 include(GNUInstallDirsWrapper)
 include(CMakePackageConfigHelpers)
 
+if (NOT WIN32)
+    add_definitions(-DWINPR_CRITICAL_SECTION_DISABLE_SPINCOUNT)
+endif()
+
 # Soname versioning
-set(WINPR_VERSION_MAJOR "2")
-set(WINPR_VERSION_MINOR "0")
-set(WINPR_VERSION_REVISION "0")
+set(RAW_VERSION_STRING "3.0.0-dev")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.source_tag")
+	file(READ ${CMAKE_SOURCE_DIR}/.source_tag RAW_VERSION_STRING)
+elseif(USE_VERSION_FROM_GIT_TAG)
+	git_get_exact_tag(_GIT_TAG --tags --always)
+	if (NOT ${_GIT_TAG} STREQUAL "n/a")
+		set(RAW_VERSION_STRING ${_GIT_TAG})
+	endif()
+endif()
+string(STRIP ${RAW_VERSION_STRING} RAW_VERSION_STRING)
+
+set(VERSION_REGEX "^.?([0-9]+)\\.([0-9]+)\\.([0-9]+)-?(.*)")
+string(REGEX REPLACE "${VERSION_REGEX}" "\\1" WINPR_VERSION_MAJOR "${RAW_VERSION_STRING}")
+string(REGEX REPLACE "${VERSION_REGEX}" "\\2" WINPR_VERSION_MINOR "${RAW_VERSION_STRING}")
+string(REGEX REPLACE "${VERSION_REGEX}" "\\3" WINPR_VERSION_REVISION "${RAW_VERSION_STRING}")
+string(REGEX REPLACE "${VERSION_REGEX}" "\\4" WINPR_VERSION_SUFFIX "${RAW_VERSION_STRING}")
+
 set(WINPR_VERSION "${WINPR_VERSION_MAJOR}.${WINPR_VERSION_MINOR}.${WINPR_VERSION_REVISION}")
-set(WINPR_VERSION_FULL "${WINPR_VERSION}")
 set(WINPR_API_VERSION "${WINPR_VERSION_MAJOR}")
+if (WINPR_VERSION_SUFFIX)
+	set(WINPR_VERSION_FULL "${WINPR_VERSION}-${WINPR_VERSION_SUFFIX}")
+else()
+	set(WINPR_VERSION_FULL "${WINPR_VERSION}")
+endif()
 
 if(NOT IOS)
 	check_include_files(stdbool.h WINPR_HAVE_STDBOOL_H)
@@ -158,6 +180,10 @@ if(NOT DEFINED BUILD_SHARED_LIBS)
 	set(BUILD_SHARED_LIBS ON)
 endif()
 
+if(BUILD_SHARED_LIBS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DWINPR_DLL")
+endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DWINPR_EXPORTS")
 
 # Enable 64bit file support on linux and FreeBSD.
@@ -172,7 +198,7 @@ add_subdirectory(include)
 
 add_subdirectory(libwinpr)
 
-if(NOT ANDROID AND NOT IOS AND NOT UWP)
+if(NOT ANDROID AND NOT IOS AND NOT UWP AND WITH_WINPR_TOOLS)
 	add_subdirectory(tools)
 endif()
 

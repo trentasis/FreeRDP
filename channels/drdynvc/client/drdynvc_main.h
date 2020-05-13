@@ -37,21 +37,16 @@
 
 typedef struct drdynvc_plugin drdynvcPlugin;
 
-#define MAX_PLUGINS 32
-
 struct _DVCMAN
 {
 	IWTSVirtualChannelManager iface;
 
 	drdynvcPlugin* drdynvc;
 
-	int num_plugins;
-	const char* plugin_names[MAX_PLUGINS];
-	IWTSPlugin* plugins[MAX_PLUGINS];
+	wArrayList* plugin_names;
+	wArrayList* plugins;
 
-	int num_listeners;
-	IWTSListener* listeners[MAX_PLUGINS];
-
+	wArrayList* listeners;
 	wArrayList* channels;
 	wStreamPool* pool;
 };
@@ -106,11 +101,11 @@ enum _DRDYNVC_STATE
 };
 typedef enum _DRDYNVC_STATE DRDYNVC_STATE;
 
-#define CREATE_REQUEST_PDU		0x01
-#define DATA_FIRST_PDU			0x02
-#define DATA_PDU			0x03
-#define CLOSE_REQUEST_PDU		0x04
-#define CAPABILITY_REQUEST_PDU		0x05
+#define CREATE_REQUEST_PDU 0x01
+#define DATA_FIRST_PDU 0x02
+#define DATA_PDU 0x03
+#define CLOSE_REQUEST_PDU 0x04
+#define CAPABILITY_REQUEST_PDU 0x05
 
 struct drdynvc_plugin
 {
@@ -127,7 +122,7 @@ struct drdynvc_plugin
 	DRDYNVC_STATE state;
 	DrdynvcClientContext* context;
 
-	int version;
+	UINT16 version;
 	int PriorityCharge0;
 	int PriorityCharge1;
 	int PriorityCharge2;

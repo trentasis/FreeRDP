@@ -27,7 +27,13 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
+#if defined(SWRESAMPLE_FOUND)
+#include <libswresample/swresample.h>
+#elif defined(AVRESAMPLE_FOUND)
 #include <libavresample/avresample.h>
+#else
+#error "libswresample or libavresample required"
+#endif
 
 #include "dsp.h"
 #include "dsp_ffmpeg.h"
@@ -50,7 +56,11 @@ struct _FREERDP_DSP_CONTEXT
 	AVFrame* resampled;
 	AVFrame* buffered;
 	AVPacket* packet;
+#if defined(SWRESAMPLE_FOUND)
+	SwrContext* rcontext;
+#else
 	AVAudioResampleContext* rcontext;
+#endif
 };
 
 static BOOL ffmpeg_codec_is_filtered(enum AVCodecID id, BOOL encoder)
@@ -69,6 +79,14 @@ static BOOL ffmpeg_codec_is_filtered(enum AVCodecID id, BOOL encoder)
 		case AV_CODEC_ID_NONE:
 			return TRUE;
 
+		case AV_CODEC_ID_AAC:
+		case AV_CODEC_ID_AAC_LATM:
+#if !defined(WITH_DSP_EXPERIMENTAL)
+			if (encoder)
+				return TRUE;
+#endif
+			return FALSE;
+
 		default:
 			return FALSE;
 	}
@@ -81,7 +99,7 @@ static enum AVCodecID ffmpeg_get_avcodec(const AUDIO_FORMAT* format)
 	if (!format)
 		return AV_CODEC_ID_NONE;
 
-	id = rdpsnd_get_audio_tag_string(format->wFormatTag);
+	id = audio_format_get_tag_string(format->wFormatTag);
 
 	switch (format->wFormatTag)
 	{
@@ -126,7 +144,6 @@ static enum AVCodecID ffmpeg_get_avcodec(const AUDIO_FORMAT* format)
 			return AV_CODEC_ID_NONE;
 	}
 }
-
 
 static int ffmpeg_sample_format(const AUDIO_FORMAT* format)
 {
@@ -185,7 +202,13 @@ static void ffmpeg_close_context(FREERDP_DSP_CONTEXT* context)
 			av_packet_free(&context->packet);
 
 		if (context->rcontext)
+		{
+#if defined(SWRESAMPLE_FOUND)
+			swr_free(&context->rcontext);
+#else
 			avresample_free(&context->rcontext);
+#endif
+		}
 
 		context->id = AV_CODEC_ID_NONE;
 		context->codec = NULL;
@@ -281,7 +304,11 @@ static BOOL ffmpeg_open_context(FREERDP_DSP_CONTEXT* context)
 	if (!context->buffered)
 		goto fail;
 
+#if defined(SWRESAMPLE_FOUND)
+	context->rcontext = swr_alloc();
+#else
 	context->rcontext = avresample_alloc_context();
+#endif
 
 	if (!context->rcontext)
 		goto fail;
@@ -322,8 +349,40 @@ fail:
 	ffmpeg_close_context(context);
 	return FALSE;
 }
-static BOOL ffmpeg_resample_frame(AVAudioResampleContext* context,
-                                  AVFrame* in, AVFrame* out)
+
+#if defined(SWRESAMPLE_FOUND)
+static BOOL ffmpeg_resample_frame(SwrContext* context, AVFrame* in, AVFrame* out)
+{
+	int ret;
+
+	if (!swr_is_initialized(context))
+	{
+		if ((ret = swr_config_frame(context, out, in)) < 0)
+		{
+			const char* err = av_err2str(ret);
+			WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
+			return FALSE;
+		}
+
+		if ((ret = (swr_init(context))) < 0)
+		{
+			const char* err = av_err2str(ret);
+			WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
+			return FALSE;
+		}
+	}
+
+	if ((ret = swr_convert_frame(context, out, in)) < 0)
+	{
+		const char* err = av_err2str(ret);
+		WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+#else
+static BOOL ffmpeg_resample_frame(AVAudioResampleContext* context, AVFrame* in, AVFrame* out)
 {
 	int ret;
 
@@ -353,8 +412,10 @@ static BOOL ffmpeg_resample_frame(AVAudioResampleContext* context,
 
 	return TRUE;
 }
-static BOOL ffmpeg_encode_frame(AVCodecContext* context, AVFrame* in,
-                                AVPacket* packet, wStream* out)
+#endif
+
+static BOOL ffmpeg_encode_frame(AVCodecContext* context, AVFrame* in, AVPacket* packet,
+                                wStream* out)
 {
 	int ret;
 	/* send the packet with the compressed data to the encoder */
@@ -363,8 +424,7 @@ static BOOL ffmpeg_encode_frame(AVCodecContext* context, AVFrame* in,
 	if (ret < 0)
 	{
 		const char* err = av_err2str(ret);
-		WLog_ERR(TAG, "Error submitting the packet to the encoder %s [%d]",
-		         err, ret);
+		WLog_ERR(TAG, "Error submitting the packet to the encoder %s [%d]", err, ret);
 		return FALSE;
 	}
 
@@ -392,8 +452,8 @@ static BOOL ffmpeg_encode_frame(AVCodecContext* context, AVFrame* in,
 	return TRUE;
 }
 
-static BOOL ffmpeg_fill_frame(AVFrame* frame, const AUDIO_FORMAT* inputFormat,
-                              const BYTE* data, size_t size)
+static BOOL ffmpeg_fill_frame(AVFrame* frame, const AUDIO_FORMAT* inputFormat, const BYTE* data,
+                              size_t size)
 {
 	int ret, bpp;
 	frame->channels = inputFormat->nChannels;
@@ -403,9 +463,7 @@ static BOOL ffmpeg_fill_frame(AVFrame* frame, const AUDIO_FORMAT* inputFormat,
 	bpp = av_get_bytes_per_sample(frame->format);
 	frame->nb_samples = size / inputFormat->nChannels / bpp;
 
-	if ((ret = avcodec_fill_audio_frame(frame, frame->channels,
-	                                    frame->format,
-	                                    data, size, 1)) < 0)
+	if ((ret = avcodec_fill_audio_frame(frame, frame->channels, frame->format, data, size, 1)) < 0)
 	{
 		const char* err = av_err2str(ret);
 		WLog_ERR(TAG, "Error during audio frame fill %s [%d]", err, ret);
@@ -414,10 +472,13 @@ static BOOL ffmpeg_fill_frame(AVFrame* frame, const AUDIO_FORMAT* inputFormat,
 
 	return TRUE;
 }
-static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt,
-                          AVFrame* frame,
-                          AVAudioResampleContext* resampleContext,
-                          AVFrame* resampled, wStream* out)
+#if defined(SWRESAMPLE_FOUND)
+static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt, AVFrame* frame,
+                          SwrContext* resampleContext, AVFrame* resampled, wStream* out)
+#else
+static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt, AVFrame* frame,
+                          AVAudioResampleContext* resampleContext, AVFrame* resampled, wStream* out)
+#endif
 {
 	int ret;
 	/* send the packet with the compressed data to the decoder */
@@ -426,8 +487,7 @@ static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt,
 	if (ret < 0)
 	{
 		const char* err = av_err2str(ret);
-		WLog_ERR(TAG, "Error submitting the packet to the decoder %s [%d]",
-		         err, ret);
+		WLog_ERR(TAG, "Error submitting the packet to the decoder %s [%d]", err, ret);
 		return FALSE;
 	}
 
@@ -445,16 +505,27 @@ static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt,
 			return FALSE;
 		}
 
+#if defined(SWRESAMPLE_FOUND)
+		if (!swr_is_initialized(resampleContext))
+		{
+			if ((ret = swr_config_frame(resampleContext, resampled, frame)) < 0)
+			{
+#else
 		if (!avresample_is_open(resampleContext))
 		{
 			if ((ret = avresample_config(resampleContext, resampled, frame)) < 0)
 			{
+#endif
 				const char* err = av_err2str(ret);
 				WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
 				return FALSE;
 			}
 
+#if defined(SWRESAMPLE_FOUND)
+			if ((ret = (swr_init(resampleContext))) < 0)
+#else
 			if ((ret = (avresample_open(resampleContext))) < 0)
+#endif
 			{
 				const char* err = av_err2str(ret);
 				WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
@@ -462,7 +533,11 @@ static BOOL ffmpeg_decode(AVCodecContext* dec_ctx, AVPacket* pkt,
 			}
 		}
 
+#if defined(SWRESAMPLE_FOUND)
+		if ((ret = swr_convert_frame(resampleContext, resampled, frame)) < 0)
+#else
 		if ((ret = avresample_convert_frame(resampleContext, resampled, frame)) < 0)
+#endif
 		{
 			const char* err = av_err2str(ret);
 			WLog_ERR(TAG, "Error during resampling %s [%d]", err, ret);
@@ -541,15 +616,12 @@ BOOL freerdp_dsp_ffmpeg_encode(FREERDP_DSP_CONTEXT* context, const AUDIO_FORMAT*
 		return FALSE;
 
 	/* Resample to desired format. */
-	if (!ffmpeg_resample_frame(context->rcontext,
-	                           context->frame,
-	                           context->resampled))
+	if (!ffmpeg_resample_frame(context->rcontext, context->frame, context->resampled))
 		return FALSE;
 
 	if (context->context->frame_size <= 0)
 	{
-		return ffmpeg_encode_frame(context->context, context->resampled,
-		                           context->packet, out);
+		return ffmpeg_encode_frame(context->context, context->resampled, context->packet, out);
 	}
 	else
 	{
@@ -560,27 +632,29 @@ BOOL freerdp_dsp_ffmpeg_encode(FREERDP_DSP_CONTEXT* context, const AUDIO_FORMAT*
 		{
 			int inSamples = rest;
 
-			if (inSamples + context->bufferedSamples > context->context->frame_size)
-				inSamples = context->context->frame_size - context->bufferedSamples;
+			if ((inSamples < 0) || (context->bufferedSamples > (UINT32)(INT_MAX - inSamples)))
+				return FALSE;
 
-			rc = av_samples_copy(context->buffered->extended_data, context->resampled->extended_data,
-			                     context->bufferedSamples, copied, inSamples,
-			                     context->context->channels, context->context->sample_fmt);
+			if (inSamples + (int)context->bufferedSamples > context->context->frame_size)
+				inSamples = context->context->frame_size - (int)context->bufferedSamples;
+
+			rc =
+			    av_samples_copy(context->buffered->extended_data, context->resampled->extended_data,
+			                    (int)context->bufferedSamples, copied, inSamples,
+			                    context->context->channels, context->context->sample_fmt);
 			rest -= inSamples;
 			copied += inSamples;
-			context->bufferedSamples += inSamples;
+			context->bufferedSamples += (UINT32)inSamples;
 
-			if (context->context->frame_size <= context->bufferedSamples)
+			if (context->context->frame_size <= (int)context->bufferedSamples)
 			{
 				/* Encode in desired format. */
-				if (!ffmpeg_encode_frame(context->context, context->buffered,
-				                         context->packet, out))
+				if (!ffmpeg_encode_frame(context->context, context->buffered, context->packet, out))
 					return FALSE;
 
 				context->bufferedSamples = 0;
 			}
-		}
-		while (rest > 0);
+		} while (rest > 0);
 
 		return TRUE;
 	}
@@ -593,8 +667,8 @@ BOOL freerdp_dsp_ffmpeg_decode(FREERDP_DSP_CONTEXT* context, const AUDIO_FORMAT*
 		return FALSE;
 
 	av_init_packet(context->packet);
-	context->packet->data = data;
+	context->packet->data = (uint8_t*)data;
 	context->packet->size = length;
-	return ffmpeg_decode(context->context, context->packet, context->frame,
-	                     context->rcontext, context->resampled, out);
+	return ffmpeg_decode(context->context, context->packet, context->frame, context->rcontext,
+	                     context->resampled, out);
 }

@@ -38,7 +38,6 @@
 
 static BOOL g_winpr_openssl_initialized_by_winpr = FALSE;
 
-
 /**
  * Note from OpenSSL 1.1.0 "CHANGES":
  * OpenSSL now uses a new threading API. It is no longer necessary to
@@ -56,7 +55,6 @@ struct CRYPTO_dynlock_value
 {
 	HANDLE mutex;
 };
-
 
 #if (OPENSSL_VERSION_NUMBER < 0x10000000L) || defined(LIBRESSL_VERSION_NUMBER)
 static unsigned long _winpr_openssl_id(void)
@@ -81,7 +79,7 @@ static struct CRYPTO_dynlock_value* _winpr_openssl_dynlock_create(const char* fi
 {
 	struct CRYPTO_dynlock_value* dynlock;
 
-	if (!(dynlock = (struct CRYPTO_dynlock_value*) malloc(sizeof(struct CRYPTO_dynlock_value))))
+	if (!(dynlock = (struct CRYPTO_dynlock_value*)malloc(sizeof(struct CRYPTO_dynlock_value))))
 		return NULL;
 
 	if (!(dynlock->mutex = CreateMutex(NULL, FALSE, NULL)))
@@ -107,7 +105,7 @@ static void _winpr_openssl_dynlock_lock(int mode, struct CRYPTO_dynlock_value* d
 }
 
 static void _winpr_openssl_dynlock_destroy(struct CRYPTO_dynlock_value* dynlock, const char* file,
-        int line)
+                                           int line)
 {
 	CloseHandle(dynlock->mutex);
 	free(dynlock);
@@ -160,8 +158,7 @@ static BOOL _winpr_openssl_initialize_locking(void)
 
 	/* OpenSSL dynamic locking */
 
-	if (CRYPTO_get_dynlock_create_callback() ||
-	    CRYPTO_get_dynlock_lock_callback()   ||
+	if (CRYPTO_get_dynlock_create_callback() || CRYPTO_get_dynlock_lock_callback() ||
 	    CRYPTO_get_dynlock_destroy_callback())
 	{
 		WLog_WARN(TAG, "dynamic locking callbacks are already set");
@@ -237,6 +234,32 @@ static BOOL _winpr_openssl_cleanup_locking(void)
 
 #endif /* OpenSSL < 1.1.0 */
 
+static BOOL winpr_enable_fips(DWORD flags)
+{
+	if (flags & WINPR_SSL_INIT_ENABLE_FIPS)
+	{
+#if (OPENSSL_VERSION_NUMBER < 0x10001000L) || defined(LIBRESSL_VERSION_NUMBER)
+		WLog_ERR(TAG, "Openssl fips mode not available on openssl versions less than 1.0.1!");
+		return FALSE;
+#else
+		WLog_DBG(TAG, "Ensuring openssl fips mode is ENabled");
+
+		if (FIPS_mode() != 1)
+		{
+			if (FIPS_mode_set(1))
+				WLog_INFO(TAG, "Openssl fips mode ENabled!");
+			else
+			{
+				WLog_ERR(TAG, "Openssl fips mode ENable failed!");
+				return FALSE;
+			}
+		}
+
+#endif
+	}
+
+	return TRUE;
+}
 
 static BOOL CALLBACK _winpr_openssl_initialize(PINIT_ONCE once, PVOID param, PVOID* context)
 {
@@ -267,44 +290,27 @@ static BOOL CALLBACK _winpr_openssl_initialize(PINIT_ONCE once, PVOID param, PVO
 	OpenSSL_add_all_ciphers();
 #else
 
-	if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
-	                     OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
-	                     OPENSSL_INIT_ADD_ALL_CIPHERS |
-	                     OPENSSL_INIT_ADD_ALL_DIGESTS |
-	                     OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL) != 1)
+	if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
+	                         OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS |
+	                         OPENSSL_INIT_ENGINE_ALL_BUILTIN,
+	                     NULL) != 1)
 		return FALSE;
 
 #endif
 	g_winpr_openssl_initialized_by_winpr = TRUE;
-
-	if (flags & WINPR_SSL_INIT_ENABLE_FIPS)
-	{
-#if (OPENSSL_VERSION_NUMBER < 0x10001000L) || defined(LIBRESSL_VERSION_NUMBER)
-		WLog_ERR(TAG, "Openssl fips mode ENable not available on openssl versions less than 1.0.1!");
-#else
-		WLog_DBG(TAG, "Ensuring openssl fips mode is ENabled");
-
-		if (FIPS_mode() != 1)
-		{
-			if (FIPS_mode_set(1))
-				WLog_INFO(TAG, "Openssl fips mode ENabled!");
-			else
-				WLog_ERR(TAG, "Openssl fips mode ENable failed!");
-		}
-
-#endif
-	}
-
-	return TRUE;
+	return winpr_enable_fips(flags);
 }
-
 
 /* exported functions */
 
 BOOL winpr_InitializeSSL(DWORD flags)
 {
 	static INIT_ONCE once = INIT_ONCE_STATIC_INIT;
-	return InitOnceExecuteOnce(&once, _winpr_openssl_initialize, &flags, NULL);
+
+	if (!InitOnceExecuteOnce(&once, _winpr_openssl_initialize, &flags, NULL))
+		return FALSE;
+
+	return winpr_enable_fips(flags);
 }
 
 BOOL winpr_CleanupSSL(DWORD flags)

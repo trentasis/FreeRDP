@@ -25,14 +25,18 @@
 
 #include <winpr/synch.h>
 
+#include "../log.h"
+
+#define TAG WINPR_TAG("synch.sleep")
+
 #ifndef _WIN32
 
 #include <time.h>
 
 #ifdef HAVE_UNISTD_H
-	#ifndef _XOPEN_SOURCE
-		#define _XOPEN_SOURCE 500
-	#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
 #include <unistd.h>
 #endif
 
@@ -43,8 +47,11 @@ VOID Sleep(DWORD dwMilliseconds)
 
 DWORD SleepEx(DWORD dwMilliseconds, BOOL bAlertable)
 {
-	usleep(dwMilliseconds * 1000);
-	return TRUE;
+	/* TODO: Implement bAlertable support */
+	if (bAlertable)
+		WLog_WARN(TAG, "%s does not support bAlertable", __FUNCTION__);
+	Sleep(dwMilliseconds);
+	return 0;
 }
 
 #endif
@@ -60,17 +67,20 @@ VOID USleep(DWORD dwMicroseconds)
 
 	QueryPerformanceCounter(&t1);
 
-	if (freq.QuadPart == 0) {
+	if (freq.QuadPart == 0)
+	{
 		QueryPerformanceFrequency(&freq);
 	}
 
 	// in order to save cpu cyles we use Sleep() for the large share ...
-	if (dwMicroseconds >= 1000) {
-		Sleep(dwMicroseconds/1000);
+	if (dwMicroseconds >= 1000)
+	{
+		Sleep(dwMicroseconds / 1000);
 	}
 	// ... and busy loop until all the requested micro seconds have passed
-	do {
+	do
+	{
 		QueryPerformanceCounter(&t2);
-	} while (((t2.QuadPart - t1.QuadPart)*1000000)/freq.QuadPart < dwMicroseconds);
+	} while (((t2.QuadPart - t1.QuadPart) * 1000000) / freq.QuadPart < dwMicroseconds);
 #endif
 }

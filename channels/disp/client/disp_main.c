@@ -40,6 +40,7 @@
 #include <freerdp/addin.h>
 
 #include "disp_main.h"
+#include "../disp_common.h"
 
 struct _DISP_CHANNEL_CALLBACK
 {
@@ -79,41 +80,42 @@ typedef struct _DISP_PLUGIN DISP_PLUGIN;
  *
  * @return 0 on success, otherwise a Win32 error code
  */
-UINT disp_send_display_control_monitor_layout_pdu(DISP_CHANNEL_CALLBACK* callback, UINT32 NumMonitors, DISPLAY_CONTROL_MONITOR_LAYOUT* Monitors)
+static UINT disp_send_display_control_monitor_layout_pdu(DISP_CHANNEL_CALLBACK* callback,
+                                                         UINT32 NumMonitors,
+                                                         DISPLAY_CONTROL_MONITOR_LAYOUT* Monitors)
 {
 	UINT status;
 	wStream* s;
-	UINT32 type;
 	UINT32 index;
-	UINT32 length;
 	DISP_PLUGIN* disp;
 	UINT32 MonitorLayoutSize;
+	DISPLAY_CONTROL_HEADER header;
+	disp = (DISP_PLUGIN*)callback->plugin;
+	MonitorLayoutSize = DISPLAY_CONTROL_MONITOR_LAYOUT_SIZE;
+	header.length = 8 + 8 + (NumMonitors * MonitorLayoutSize);
+	header.type = DISPLAY_CONTROL_PDU_TYPE_MONITOR_LAYOUT;
 
-	disp = (DISP_PLUGIN*) callback->plugin;
+	s = Stream_New(NULL, header.length);
 
-	MonitorLayoutSize = 40;
-
-	length = 8 + 8 + (NumMonitors * MonitorLayoutSize);
-
-	type = DISPLAY_CONTROL_PDU_TYPE_MONITOR_LAYOUT;
-
-	s = Stream_New(NULL, length);
-	if(!s)
+	if (!s)
 	{
 		WLog_ERR(TAG, "Stream_New failed!");
 		return CHANNEL_RC_NO_MEMORY;
 	}
 
-	Stream_Write_UINT32(s, type); /* Type (4 bytes) */
-	Stream_Write_UINT32(s, length); /* Length (4 bytes) */
+	if ((status = disp_write_header(s, &header)))
+	{
+		WLog_ERR(TAG, "Failed to write header with error %" PRIu32 "!", status);
+		goto out;
+	}
 
 	if (NumMonitors > disp->MaxNumMonitors)
 		NumMonitors = disp->MaxNumMonitors;
 
 	Stream_Write_UINT32(s, MonitorLayoutSize); /* MonitorLayoutSize (4 bytes) */
-	Stream_Write_UINT32(s, NumMonitors); /* NumMonitors (4 bytes) */
-
-	WLog_DBG(TAG, "disp_send_display_control_monitor_layout_pdu: NumMonitors=%"PRIu32"", NumMonitors);
+	Stream_Write_UINT32(s, NumMonitors);       /* NumMonitors (4 bytes) */
+	WLog_DBG(TAG, "disp_send_display_control_monitor_layout_pdu: NumMonitors=%" PRIu32 "",
+	         NumMonitors);
 
 	for (index = 0; index < NumMonitors; index++)
 	{
@@ -134,30 +136,34 @@ UINT disp_send_display_control_monitor_layout_pdu(DISP_CHANNEL_CALLBACK* callbac
 		if (Monitors[index].Height > 8192)
 			Monitors[index].Height = 8192;
 
-		Stream_Write_UINT32(s, Monitors[index].Flags); /* Flags (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].Left); /* Left (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].Top); /* Top (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].Width); /* Width (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].Height); /* Height (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].PhysicalWidth); /* PhysicalWidth (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Flags);          /* Flags (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Left);           /* Left (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Top);            /* Top (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Width);          /* Width (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Height);         /* Height (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].PhysicalWidth);  /* PhysicalWidth (4 bytes) */
 		Stream_Write_UINT32(s, Monitors[index].PhysicalHeight); /* PhysicalHeight (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].Orientation); /* Orientation (4 bytes) */
-		Stream_Write_UINT32(s, Monitors[index].DesktopScaleFactor); /* DesktopScaleFactor (4 bytes) */
+		Stream_Write_UINT32(s, Monitors[index].Orientation);    /* Orientation (4 bytes) */
+		Stream_Write_UINT32(s,
+		                    Monitors[index].DesktopScaleFactor); /* DesktopScaleFactor (4 bytes) */
 		Stream_Write_UINT32(s, Monitors[index].DeviceScaleFactor); /* DeviceScaleFactor (4 bytes) */
-
-		WLog_DBG(TAG, "\t%d : Flags: 0x%08"PRIX32" Left/Top: (%"PRId32",%"PRId32") W/H=%"PRIu32"x%"PRIu32")", index,
-				Monitors[index].Flags, Monitors[index].Left, Monitors[index].Top, Monitors[index].Width,
-				Monitors[index].Height);
-		WLog_DBG(TAG, "\t   PhysicalWidth: %"PRIu32" PhysicalHeight: %"PRIu32" Orientation: %"PRIu32"",
-				Monitors[index].PhysicalWidth, Monitors[index].PhysicalHeight, Monitors[index].Orientation);
+		WLog_DBG(TAG,
+		         "\t%d : Flags: 0x%08" PRIX32 " Left/Top: (%" PRId32 ",%" PRId32 ") W/H=%" PRIu32
+		         "x%" PRIu32 ")",
+		         index, Monitors[index].Flags, Monitors[index].Left, Monitors[index].Top,
+		         Monitors[index].Width, Monitors[index].Height);
+		WLog_DBG(TAG,
+		         "\t   PhysicalWidth: %" PRIu32 " PhysicalHeight: %" PRIu32 " Orientation: %" PRIu32
+		         "",
+		         Monitors[index].PhysicalWidth, Monitors[index].PhysicalHeight,
+		         Monitors[index].Orientation);
 	}
 
+out:
 	Stream_SealLength(s);
-
-	status = callback->channel->Write(callback->channel, (UINT32) Stream_Length(s), Stream_Buffer(s), NULL);
-
+	status = callback->channel->Write(callback->channel, (UINT32)Stream_Length(s), Stream_Buffer(s),
+	                                  NULL);
 	Stream_Free(s, TRUE);
-
 	return status;
 }
 
@@ -166,14 +172,13 @@ UINT disp_send_display_control_monitor_layout_pdu(DISP_CHANNEL_CALLBACK* callbac
  *
  * @return 0 on success, otherwise a Win32 error code
  */
-UINT disp_recv_display_control_caps_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
+static UINT disp_recv_display_control_caps_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
 {
 	DISP_PLUGIN* disp;
-	DispClientContext *context;
+	DispClientContext* context;
 	UINT ret = CHANNEL_RC_OK;
-
-	disp = (DISP_PLUGIN*) callback->plugin;
-	context = (DispClientContext *)disp->iface.pInterface;
+	disp = (DISP_PLUGIN*)callback->plugin;
+	context = (DispClientContext*)disp->iface.pInterface;
 
 	if (Stream_GetRemainingLength(s) < 12)
 	{
@@ -181,12 +186,13 @@ UINT disp_recv_display_control_caps_pdu(DISP_CHANNEL_CALLBACK* callback, wStream
 		return ERROR_INVALID_DATA;
 	}
 
-	Stream_Read_UINT32(s, disp->MaxNumMonitors); /* MaxNumMonitors (4 bytes) */
+	Stream_Read_UINT32(s, disp->MaxNumMonitors);        /* MaxNumMonitors (4 bytes) */
 	Stream_Read_UINT32(s, disp->MaxMonitorAreaFactorA); /* MaxMonitorAreaFactorA (4 bytes) */
 	Stream_Read_UINT32(s, disp->MaxMonitorAreaFactorB); /* MaxMonitorAreaFactorB (4 bytes) */
 
 	if (context->DisplayControlCaps)
-		ret = context->DisplayControlCaps(context, disp->MaxNumMonitors, disp->MaxMonitorAreaFactorA, disp->MaxMonitorAreaFactorB);
+		ret = context->DisplayControlCaps(context, disp->MaxNumMonitors,
+		                                  disp->MaxMonitorAreaFactorA, disp->MaxMonitorAreaFactorB);
 
 	return ret;
 }
@@ -196,10 +202,10 @@ UINT disp_recv_display_control_caps_pdu(DISP_CHANNEL_CALLBACK* callback, wStream
  *
  * @return 0 on success, otherwise a Win32 error code
  */
-UINT disp_recv_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
+static UINT disp_recv_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
 {
-	UINT32 type;
-	UINT32 length;
+	UINT32 error;
+	DISPLAY_CONTROL_HEADER header;
 
 	if (Stream_GetRemainingLength(s) < 8)
 	{
@@ -207,18 +213,25 @@ UINT disp_recv_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
 		return ERROR_INVALID_DATA;
 	}
 
-	Stream_Read_UINT32(s, type); /* Type (4 bytes) */
-	Stream_Read_UINT32(s, length); /* Length (4 bytes) */
+	if ((error = disp_read_header(s, &header)))
+	{
+		WLog_ERR(TAG, "disp_read_header failed with error %" PRIu32 "!", error);
+		return error;
+	}
 
-	//WLog_ERR(TAG,  "Type: %"PRIu32" Length: %"PRIu32"", type, length);
+	if (!Stream_EnsureRemainingCapacity(s, header.length))
+	{
+		WLog_ERR(TAG, "not enough remaining data");
+		return ERROR_INVALID_DATA;
+	}
 
-	switch (type)
+	switch (header.type)
 	{
 		case DISPLAY_CONTROL_PDU_TYPE_CAPS:
 			return disp_recv_display_control_caps_pdu(callback, s);
 
 		default:
-			WLog_ERR(TAG, "Type %"PRIu32" not recognized!", type);
+			WLog_ERR(TAG, "Type %" PRIu32 " not recognized!", header.type);
 			return ERROR_INTERNAL_ERROR;
 	}
 }
@@ -228,10 +241,9 @@ UINT disp_recv_pdu(DISP_CHANNEL_CALLBACK* callback, wStream* s)
  *
  * @return 0 on success, otherwise a Win32 error code
  */
-static UINT disp_on_data_received(IWTSVirtualChannelCallback* pChannelCallback, wStream *data)
+static UINT disp_on_data_received(IWTSVirtualChannelCallback* pChannelCallback, wStream* data)
 {
-	DISP_CHANNEL_CALLBACK* callback = (DISP_CHANNEL_CALLBACK*) pChannelCallback;
-
+	DISP_CHANNEL_CALLBACK* callback = (DISP_CHANNEL_CALLBACK*)pChannelCallback;
 	return disp_recv_pdu(callback, data);
 }
 
@@ -252,13 +264,12 @@ static UINT disp_on_close(IWTSVirtualChannelCallback* pChannelCallback)
  * @return 0 on success, otherwise a Win32 error code
  */
 static UINT disp_on_new_channel_connection(IWTSListenerCallback* pListenerCallback,
-	IWTSVirtualChannel* pChannel, BYTE* Data, BOOL* pbAccept,
-	IWTSVirtualChannelCallback** ppCallback)
+                                           IWTSVirtualChannel* pChannel, BYTE* Data, BOOL* pbAccept,
+                                           IWTSVirtualChannelCallback** ppCallback)
 {
 	DISP_CHANNEL_CALLBACK* callback;
-	DISP_LISTENER_CALLBACK* listener_callback = (DISP_LISTENER_CALLBACK*) pListenerCallback;
-
-	callback = (DISP_CHANNEL_CALLBACK*) calloc(1, sizeof(DISP_CHANNEL_CALLBACK));
+	DISP_LISTENER_CALLBACK* listener_callback = (DISP_LISTENER_CALLBACK*)pListenerCallback;
+	callback = (DISP_CHANNEL_CALLBACK*)calloc(1, sizeof(DISP_CHANNEL_CALLBACK));
 
 	if (!callback)
 	{
@@ -272,9 +283,7 @@ static UINT disp_on_new_channel_connection(IWTSListenerCallback* pListenerCallba
 	callback->channel_mgr = listener_callback->channel_mgr;
 	callback->channel = pChannel;
 	listener_callback->channel_callback = callback;
-
-	*ppCallback = (IWTSVirtualChannelCallback*) callback;
-
+	*ppCallback = (IWTSVirtualChannelCallback*)callback;
 	return CHANNEL_RC_OK;
 }
 
@@ -286,9 +295,8 @@ static UINT disp_on_new_channel_connection(IWTSListenerCallback* pListenerCallba
 static UINT disp_plugin_initialize(IWTSPlugin* pPlugin, IWTSVirtualChannelManager* pChannelMgr)
 {
 	UINT status;
-	DISP_PLUGIN* disp = (DISP_PLUGIN*) pPlugin;
-
-	disp->listener_callback = (DISP_LISTENER_CALLBACK*) calloc(1, sizeof(DISP_LISTENER_CALLBACK));
+	DISP_PLUGIN* disp = (DISP_PLUGIN*)pPlugin;
+	disp->listener_callback = (DISP_LISTENER_CALLBACK*)calloc(1, sizeof(DISP_LISTENER_CALLBACK));
 
 	if (!disp->listener_callback)
 	{
@@ -299,12 +307,9 @@ static UINT disp_plugin_initialize(IWTSPlugin* pPlugin, IWTSVirtualChannelManage
 	disp->listener_callback->iface.OnNewChannelConnection = disp_on_new_channel_connection;
 	disp->listener_callback->plugin = pPlugin;
 	disp->listener_callback->channel_mgr = pChannelMgr;
-
 	status = pChannelMgr->CreateListener(pChannelMgr, DISP_DVC_CHANNEL_NAME, 0,
-		(IWTSListenerCallback*) disp->listener_callback, &(disp->listener));
-
+	                                     &disp->listener_callback->iface, &(disp->listener));
 	disp->listener->pInterface = disp->iface.pInterface;
-
 	return status;
 }
 
@@ -315,7 +320,15 @@ static UINT disp_plugin_initialize(IWTSPlugin* pPlugin, IWTSVirtualChannelManage
  */
 static UINT disp_plugin_terminated(IWTSPlugin* pPlugin)
 {
-	DISP_PLUGIN* disp = (DISP_PLUGIN*) pPlugin;
+	DISP_PLUGIN* disp = (DISP_PLUGIN*)pPlugin;
+
+	if (disp && disp->listener_callback)
+	{
+		IWTSVirtualChannelManager* mgr = disp->listener_callback->channel_mgr;
+		if (mgr)
+			IFCALL(mgr->DestroyListener, mgr, disp->listener);
+	}
+
 	free(disp->listener_callback);
 	free(disp->iface.pInterface);
 	free(pPlugin);
@@ -331,18 +344,18 @@ static UINT disp_plugin_terminated(IWTSPlugin* pPlugin)
  *
  * @return 0 on success, otherwise a Win32 error code
  */
-UINT disp_send_monitor_layout(DispClientContext* context, UINT32 NumMonitors, DISPLAY_CONTROL_MONITOR_LAYOUT* Monitors)
+static UINT disp_send_monitor_layout(DispClientContext* context, UINT32 NumMonitors,
+                                     DISPLAY_CONTROL_MONITOR_LAYOUT* Monitors)
 {
-	DISP_PLUGIN* disp = (DISP_PLUGIN*) context->handle;
+	DISP_PLUGIN* disp = (DISP_PLUGIN*)context->handle;
 	DISP_CHANNEL_CALLBACK* callback = disp->listener_callback->channel_callback;
-
 	return disp_send_display_control_monitor_layout_pdu(callback, NumMonitors, Monitors);
 }
 
 #ifdef BUILTIN_CHANNELS
-#define DVCPluginEntry		disp_DVCPluginEntry
+#define DVCPluginEntry disp_DVCPluginEntry
 #else
-#define DVCPluginEntry		FREERDP_API DVCPluginEntry
+#define DVCPluginEntry FREERDP_API DVCPluginEntry
 #endif
 
 /**
@@ -355,11 +368,12 @@ UINT DVCPluginEntry(IDRDYNVC_ENTRY_POINTS* pEntryPoints)
 	UINT error = CHANNEL_RC_OK;
 	DISP_PLUGIN* disp;
 	DispClientContext* context;
+	disp = (DISP_PLUGIN*)pEntryPoints->GetPlugin(pEntryPoints, "disp");
 
-	disp = (DISP_PLUGIN*) pEntryPoints->GetPlugin(pEntryPoints, "disp");
 	if (!disp)
 	{
-		disp = (DISP_PLUGIN*) calloc(1, sizeof(DISP_PLUGIN));
+		disp = (DISP_PLUGIN*)calloc(1, sizeof(DISP_PLUGIN));
+
 		if (!disp)
 		{
 			WLog_ERR(TAG, "calloc failed!");
@@ -373,8 +387,8 @@ UINT DVCPluginEntry(IDRDYNVC_ENTRY_POINTS* pEntryPoints)
 		disp->MaxNumMonitors = 16;
 		disp->MaxMonitorAreaFactorA = 8192;
 		disp->MaxMonitorAreaFactorB = 8192;
+		context = (DispClientContext*)calloc(1, sizeof(DispClientContext));
 
-		context = (DispClientContext*) calloc(1, sizeof(DispClientContext));
 		if (!context)
 		{
 			WLog_ERR(TAG, "calloc failed!");
@@ -382,12 +396,10 @@ UINT DVCPluginEntry(IDRDYNVC_ENTRY_POINTS* pEntryPoints)
 			return CHANNEL_RC_NO_MEMORY;
 		}
 
-		context->handle = (void*) disp;
+		context->handle = (void*)disp;
 		context->SendMonitorLayout = disp_send_monitor_layout;
-
-		disp->iface.pInterface = (void*) context;
-
-		error = pEntryPoints->RegisterPlugin(pEntryPoints, "disp", (IWTSPlugin*) disp);
+		disp->iface.pInterface = (void*)context;
+		error = pEntryPoints->RegisterPlugin(pEntryPoints, "disp", (IWTSPlugin*)disp);
 	}
 	else
 	{

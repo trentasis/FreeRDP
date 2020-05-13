@@ -40,7 +40,7 @@ BOOL HashTable_PointerCompare(void* pointer1, void* pointer2)
 
 UINT32 HashTable_PointerHash(void* pointer)
 {
-	return ((UINT32)(UINT_PTR) pointer) >> 4;
+	return ((UINT32)(UINT_PTR)pointer) >> 4;
 }
 
 BOOL HashTable_StringCompare(void* string1, void* string2)
@@ -48,14 +48,14 @@ BOOL HashTable_StringCompare(void* string1, void* string2)
 	if (!string1 || !string2)
 		return (string1 == string2);
 
-	return (strcmp((char*) string1, (char*) string2) == 0);
+	return (strcmp((char*)string1, (char*)string2) == 0);
 }
 
 UINT32 HashTable_StringHash(void* key)
 {
 	UINT32 c;
 	UINT32 hash = 5381;
-	BYTE* str = (BYTE*) key;
+	BYTE* str = (BYTE*)key;
 
 	/* djb2 algorithm */
 	while ((c = *str++) != '\0')
@@ -66,7 +66,7 @@ UINT32 HashTable_StringHash(void* key)
 
 void* HashTable_StringClone(void* str)
 {
-	return _strdup((char*) str);
+	return _strdup((char*)str);
 }
 
 void HashTable_StringFree(void* str)
@@ -91,7 +91,7 @@ static int HashTable_IsProbablePrime(int oddNumber)
 
 static long HashTable_CalculateIdealNumOfBuckets(wHashTable* table)
 {
-	int idealNumOfBuckets = table->numOfElements / ((int) table->idealRatio);
+	int idealNumOfBuckets = table->numOfElements / ((int)table->idealRatio);
 
 	if (idealNumOfBuckets < 5)
 		idealNumOfBuckets = 5;
@@ -104,7 +104,7 @@ static long HashTable_CalculateIdealNumOfBuckets(wHashTable* table)
 	return idealNumOfBuckets;
 }
 
-void HashTable_Rehash(wHashTable* table, int numOfBuckets)
+static void HashTable_Rehash(wHashTable* table, int numOfBuckets)
 {
 	int index;
 	UINT32 hashValue;
@@ -118,7 +118,7 @@ void HashTable_Rehash(wHashTable* table, int numOfBuckets)
 	if (numOfBuckets == table->numOfBuckets)
 		return; /* already the right size! */
 
-	newBucketArray = (wKeyValuePair**) calloc(numOfBuckets, sizeof(wKeyValuePair*));
+	newBucketArray = (wKeyValuePair**)calloc(numOfBuckets, sizeof(wKeyValuePair*));
 
 	if (!newBucketArray)
 	{
@@ -146,14 +146,6 @@ void HashTable_Rehash(wHashTable* table, int numOfBuckets)
 	free(table->bucketArray);
 	table->bucketArray = newBucketArray;
 	table->numOfBuckets = numOfBuckets;
-}
-
-void HashTable_SetIdealRatio(wHashTable* table, float idealRatio,
-                             float lowerRehashThreshold, float upperRehashThreshold)
-{
-	table->idealRatio = idealRatio;
-	table->lowerRehashThreshold = lowerRehashThreshold;
-	table->upperRehashThreshold = upperRehashThreshold;
 }
 
 wKeyValuePair* HashTable_Get(wHashTable* table, void* key)
@@ -250,7 +242,7 @@ int HashTable_Add(wHashTable* table, void* key, void* value)
 	}
 	else
 	{
-		newPair = (wKeyValuePair*) malloc(sizeof(wKeyValuePair));
+		newPair = (wKeyValuePair*)malloc(sizeof(wKeyValuePair));
 
 		if (!newPair)
 		{
@@ -266,7 +258,8 @@ int HashTable_Add(wHashTable* table, void* key, void* value)
 
 			if (table->upperRehashThreshold > table->idealRatio)
 			{
-				float elementToBucketRatio = (float) table->numOfElements / (float) table->numOfBuckets;
+				float elementToBucketRatio =
+				    (float)table->numOfElements / (float)table->numOfBuckets;
 
 				if (elementToBucketRatio > table->upperRehashThreshold)
 					HashTable_Rehash(table, 0);
@@ -325,7 +318,7 @@ BOOL HashTable_Remove(wHashTable* table, void* key)
 
 		if (table->lowerRehashThreshold > 0.0)
 		{
-			float elementToBucketRatio = (float) table->numOfElements / (float) table->numOfBuckets;
+			float elementToBucketRatio = (float)table->numOfElements / (float)table->numOfBuckets;
 
 			if (elementToBucketRatio < table->lowerRehashThreshold)
 				HashTable_Rehash(table, 0);
@@ -458,6 +451,7 @@ int HashTable_GetKeys(wHashTable* table, ULONG_PTR** ppKeys)
 
 	iKey = 0;
 	count = table->numOfElements;
+	*ppKeys = NULL;
 
 	if (count < 1)
 	{
@@ -467,7 +461,7 @@ int HashTable_GetKeys(wHashTable* table, ULONG_PTR** ppKeys)
 		return 0;
 	}
 
-	pKeys = (ULONG_PTR*) calloc(count, sizeof(ULONG_PTR));
+	pKeys = (ULONG_PTR*)calloc(count, sizeof(ULONG_PTR));
 
 	if (!pKeys)
 	{
@@ -484,7 +478,7 @@ int HashTable_GetKeys(wHashTable* table, ULONG_PTR** ppKeys)
 		while (pair)
 		{
 			nextPair = pair->next;
-			pKeys[iKey++] = (ULONG_PTR) pair->key;
+			pKeys[iKey++] = (ULONG_PTR)pair->key;
 			pair = nextPair;
 		}
 	}
@@ -579,7 +573,7 @@ BOOL HashTable_ContainsValue(wHashTable* table, void* value)
 wHashTable* HashTable_New(BOOL synchronized)
 {
 	wHashTable* table;
-	table = (wHashTable*) calloc(1, sizeof(wHashTable));
+	table = (wHashTable*)calloc(1, sizeof(wHashTable));
 
 	if (table)
 	{
@@ -587,7 +581,7 @@ wHashTable* HashTable_New(BOOL synchronized)
 		InitializeCriticalSectionAndSpinCount(&(table->lock), 4000);
 		table->numOfBuckets = 64;
 		table->numOfElements = 0;
-		table->bucketArray = (wKeyValuePair**) calloc(table->numOfBuckets, sizeof(wKeyValuePair*));
+		table->bucketArray = (wKeyValuePair**)calloc(table->numOfBuckets, sizeof(wKeyValuePair*));
 
 		if (!table->bucketArray)
 		{

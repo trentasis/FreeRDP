@@ -71,7 +71,7 @@ CMAKE_DEPENDENT_OPTION(BUILD_COMM_TESTS "Build comm related tests (require comm 
 option(WITH_SAMPLE "Build sample code" OFF)
 
 option(WITH_CLIENT_COMMON "Build client common library" ON)
-cmake_dependent_option(WITH_CLIENT "Build client binaries" ON "WITH_CLIENT_COMMON" OFF)
+CMAKE_DEPENDENT_OPTION(WITH_CLIENT "Build client binaries" ON "WITH_CLIENT_COMMON" OFF)
 
 option(WITH_SERVER "Build server binaries" OFF)
 
@@ -79,10 +79,12 @@ option(BUILTIN_CHANNELS "Combine all channels into their respective base library
 
 option(WITH_CHANNELS "Build virtual channel plugins" ON)
 
-cmake_dependent_option(WITH_CLIENT_CHANNELS "Build virtual channel plugins" ON
+option(WITH_WINPR_TOOLS "Build WinPR helper binaries" ON)
+
+CMAKE_DEPENDENT_OPTION(WITH_CLIENT_CHANNELS "Build virtual channel plugins" ON
 	"WITH_CLIENT_COMMON;WITH_CHANNELS" OFF)
 
-cmake_dependent_option(WITH_MACAUDIO "Enable OSX sound backend" ON "APPLE;NOT IOS" OFF)
+CMAKE_DEPENDENT_OPTION(WITH_MACAUDIO "Enable OSX sound backend" ON "APPLE;NOT IOS" OFF)
 
 if(WITH_SERVER AND WITH_CHANNELS)
 	option(WITH_SERVER_CHANNELS "Build virtual channel plugins" ON)
@@ -105,8 +107,9 @@ option(WITH_DEBUG_CERTIFICATE "Print certificate related debug messages." ${DEFA
 option(WITH_DEBUG_CAPABILITIES "Print capability negotiation debug messages." ${DEFAULT_DEBUG_OPTION})
 option(WITH_DEBUG_CHANNELS "Print channel manager debug messages." ${DEFAULT_DEBUG_OPTION})
 option(WITH_DEBUG_CLIPRDR "Print clipboard redirection debug messages" ${DEFAULT_DEBUG_OPTION})
+option(WITH_DEBUG_RDPGFX "Print RDPGFX debug messages" ${DEFAULT_DEBUG_OPTION})
 option(WITH_DEBUG_DVC "Print dynamic virtual channel debug messages." ${DEFAULT_DEBUG_OPTION})
-option(WITH_DEBUG_TSMF "Print TSMF virtual channel debug messages." ${DEFAULT_DEBUG_OPTION})
+CMAKE_DEPENDENT_OPTION(WITH_DEBUG_TSMF "Print TSMF virtual channel debug messages." ${DEFAULT_DEBUG_OPTION} "CHANNEL_TSMF" OFF)
 option(WITH_DEBUG_KBD "Print keyboard related debug messages." ${DEFAULT_DEBUG_OPTION})
 option(WITH_DEBUG_LICENSE "Print license debug messages." ${DEFAULT_DEBUG_OPTION})
 option(WITH_DEBUG_NEGO "Print negotiation related debug messages." ${DEFAULT_DEBUG_OPTION})
@@ -135,20 +138,25 @@ option(WITH_DEBUG_RINGBUFFER "Enable Ringbuffer debug messages" ${DEFAULT_DEBUG_
 
 option(WITH_DEBUG_SYMBOLS "Pack debug symbols to installer" OFF)
 option(WITH_CCACHE "Use ccache support if available" ON)
+option(WITH_CLANG_FORMAT "Detect clang-format. run 'cmake --build . --target clangformat' to format." ON)
 option(WITH_ICU "Use ICU for unicode conversion" OFF)
+option(WITH_GSSAPI "Compile support for kerberos authentication. (EXPERIMENTAL)" OFF)
 
 option(WITH_DSP_EXPERIMENTAL "Enable experimental sound encoder/decoder formats" OFF)
 if (WITH_FFMPEG)
     option(WITH_DSP_FFMPEG "Use FFMPEG for audio encoding/decoding" OFF)
+    option(WITH_VAAPI "Use FFMPEG VAAPI" OFF)
 endif(WITH_FFMPEG)
 
 option(USE_VERSION_FROM_GIT_TAG "Extract FreeRDP version from git tag." OFF)
 
-if(ANDROID)
-include(ConfigOptionsAndroid)
+option(WITH_CAIRO    "Use CAIRO image library for screen resizing" OFF)
+option(WITH_SWSCALE  "Use SWScale image library for screen resizing" OFF)
+
+if (ANDROID)
+	include(ConfigOptionsAndroid)
 endif(ANDROID)
 
-if(IOS)
-include(ConfigOptionsiOS)
+if (IOS)
+	include(ConfigOptionsiOS)
 endif(IOS)
-

@@ -114,6 +114,13 @@ struct _TS_BITMAP_DATA_EX
 };
 typedef struct _TS_BITMAP_DATA_EX TS_BITMAP_DATA_EX;
 
+enum SURFCMD_CMDTYPE
+{
+	CMDTYPE_SET_SURFACE_BITS = 0x0001,
+	CMDTYPE_FRAME_MARKER = 0x0004,
+	CMDTYPE_STREAM_SURFACE_BITS = 0x0006
+};
+
 struct _SURFACE_BITS_COMMAND
 {
 	UINT32 cmdType;
@@ -137,6 +144,20 @@ enum SURFCMD_FRAMEACTION
 {
 	SURFACECMD_FRAMEACTION_BEGIN = 0x0000,
 	SURFACECMD_FRAMEACTION_END = 0x0001
+};
+
+/** @brief status code as in 2.2.5.2 Server Status Info PDU */
+enum
+{
+	TS_STATUS_FINDING_DESTINATION = 0x00000401,
+	TS_STATUS_LOADING_DESTINATION = 0x00000402,
+	TS_STATUS_BRINGING_SESSION_ONLINE = 0x00000403,
+	TS_STATUS_REDIRECTING_TO_DESTINATION = 0x00000404,
+	TS_STATUS_VM_LOADING = 0x00000501,
+	TS_STATUS_VM_WAKING = 0x00000502,
+	TS_STATUS_VM_STARTING = 0x00000503,
+	TS_STATUS_VM_STARTING_MONITORING = 0x00000504,
+	TS_STATUS_VM_RETRYING_MONITORING = 0x00000505
 };
 
 struct _SURFACE_FRAME
@@ -168,55 +189,55 @@ typedef BOOL (*pSuppressOutput)(rdpContext* context, BYTE allow, const RECTANGLE
 typedef BOOL (*pRemoteMonitors)(rdpContext* context, UINT32 count, const MONITOR_DEF* monitors);
 
 typedef BOOL (*pSurfaceCommand)(rdpContext* context, wStream* s);
-typedef BOOL (*pSurfaceBits)(rdpContext* context,
-                             const SURFACE_BITS_COMMAND* surfaceBitsCommand);
+typedef BOOL (*pSurfaceBits)(rdpContext* context, const SURFACE_BITS_COMMAND* surfaceBitsCommand);
 typedef BOOL (*pSurfaceFrameMarker)(rdpContext* context,
                                     const SURFACE_FRAME_MARKER* surfaceFrameMarker);
-typedef BOOL (*pSurfaceFrameBits)(rdpContext* context,
-                                  const SURFACE_BITS_COMMAND* cmd, BOOL first,
+typedef BOOL (*pSurfaceFrameBits)(rdpContext* context, const SURFACE_BITS_COMMAND* cmd, BOOL first,
                                   BOOL last, UINT32 frameId);
 typedef BOOL (*pSurfaceFrameAcknowledge)(rdpContext* context, UINT32 frameId);
 
 typedef BOOL (*pSaveSessionInfo)(rdpContext* context, UINT32 type, void* data);
 typedef BOOL (*pSetKeyboardImeStatus)(rdpContext* context, UINT16 imeId, UINT32 imeState,
                                       UINT32 imeConvMode);
+typedef BOOL (*pServerStatusInfo)(rdpContext* context, UINT32 status);
 
 struct rdp_update
 {
-	rdpContext* context; /* 0 */
+	rdpContext* context;     /* 0 */
 	UINT32 paddingA[16 - 1]; /* 1 */
 
-	pBeginPaint BeginPaint; /* 16 */
-	pEndPaint EndPaint; /* 17 */
-	pSetBounds SetBounds; /* 18 */
-	pSynchronize Synchronize; /* 19 */
-	pDesktopResize DesktopResize; /* 20 */
-	pBitmapUpdate BitmapUpdate; /* 21 */
-	pPalette Palette; /* 22 */
-	pPlaySound PlaySound; /* 23 */
+	pBeginPaint BeginPaint;                       /* 16 */
+	pEndPaint EndPaint;                           /* 17 */
+	pSetBounds SetBounds;                         /* 18 */
+	pSynchronize Synchronize;                     /* 19 */
+	pDesktopResize DesktopResize;                 /* 20 */
+	pBitmapUpdate BitmapUpdate;                   /* 21 */
+	pPalette Palette;                             /* 22 */
+	pPlaySound PlaySound;                         /* 23 */
 	pSetKeyboardIndicators SetKeyboardIndicators; /* 24 */
-	pSetKeyboardImeStatus SetKeyboardImeStatus; /* 25 */
-	UINT32 paddingB[32 - 26]; /* 26 */
+	pSetKeyboardImeStatus SetKeyboardImeStatus;   /* 25 */
+	UINT32 paddingB[32 - 26];                     /* 26 */
 
-	rdpPointerUpdate* pointer; /* 32 */
-	rdpPrimaryUpdate* primary; /* 33 */
+	rdpPointerUpdate* pointer;     /* 32 */
+	rdpPrimaryUpdate* primary;     /* 33 */
 	rdpSecondaryUpdate* secondary; /* 34 */
-	rdpAltSecUpdate* altsec; /* 35 */
-	rdpWindowUpdate* window; /* 36 */
-	UINT32 paddingC[48 - 37]; /* 37 */
+	rdpAltSecUpdate* altsec;       /* 35 */
+	rdpWindowUpdate* window;       /* 36 */
+	UINT32 paddingC[48 - 37];      /* 37 */
 
-	pRefreshRect RefreshRect; /* 48 */
+	pRefreshRect RefreshRect;       /* 48 */
 	pSuppressOutput SuppressOutput; /* 49 */
 	pRemoteMonitors RemoteMonitors; /* 50 */
-	UINT32 paddingD[64 - 51]; /* 51 */
+	UINT32 paddingD[64 - 51];       /* 51 */
 
-	pSurfaceCommand SurfaceCommand; /* 64 */
-	pSurfaceBits SurfaceBits; /* 65 */
-	pSurfaceFrameMarker SurfaceFrameMarker; /* 66 */
-	pSurfaceFrameBits SurfaceFrameBits; /* 67 */
+	pSurfaceCommand SurfaceCommand;                   /* 64 */
+	pSurfaceBits SurfaceBits;                         /* 65 */
+	pSurfaceFrameMarker SurfaceFrameMarker;           /* 66 */
+	pSurfaceFrameBits SurfaceFrameBits;               /* 67 */
 	pSurfaceFrameAcknowledge SurfaceFrameAcknowledge; /* 68 */
-	pSaveSessionInfo SaveSessionInfo; /* 69 */
-	UINT32 paddingE[80 - 70]; /* 70 */
+	pSaveSessionInfo SaveSessionInfo;                 /* 69 */
+	pServerStatusInfo ServerStatusInfo;               /* 70 */
+	UINT32 paddingE[80 - 71];                         /* 71 */
 
 	/* internal */
 
@@ -236,6 +257,12 @@ struct rdp_update
 	BOOL combineUpdates;
 	rdpBounds currentBounds;
 	rdpBounds previousBounds;
+	CRITICAL_SECTION mux;
+
+	/* if autoCalculateBitmapData is set to TRUE, the server automatically
+	 * fills BITMAP_DATA struct members: flags, cbCompMainBodySize and cbCompFirstRowSize.
+	 */
+	BOOL autoCalculateBitmapData;
 };
 
 #endif /* FREERDP_UPDATE_H */

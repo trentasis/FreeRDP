@@ -22,6 +22,7 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <winpr/crt.h>
 #include <winpr/stream.h>
 
@@ -40,13 +41,21 @@ BOOL Stream_EnsureCapacity(wStream* s, size_t size)
 		do
 		{
 			new_capacity *= 2;
-		}
-		while (new_capacity < size);
-
+		} while (new_capacity < size);
 
 		position = Stream_GetPosition(s);
 
-		new_buf = (BYTE*) realloc(s->buffer, new_capacity);
+		if (!s->isOwner)
+		{
+			new_buf = (BYTE*)malloc(new_capacity);
+			CopyMemory(new_buf, s->buffer, s->capacity);
+			s->isOwner = TRUE;
+		}
+		else
+		{
+			new_buf = (BYTE*)realloc(s->buffer, new_capacity);
+		}
+
 		if (!new_buf)
 			return FALSE;
 		s->buffer = new_buf;
@@ -74,15 +83,13 @@ wStream* Stream_New(BYTE* buffer, size_t size)
 		return NULL;
 
 	s = malloc(sizeof(wStream));
-
 	if (!s)
 		return NULL;
-
 
 	if (buffer)
 		s->buffer = buffer;
 	else
-		s->buffer = (BYTE*) malloc(size);
+		s->buffer = (BYTE*)malloc(size);
 
 	if (!s->buffer)
 	{
@@ -96,17 +103,32 @@ wStream* Stream_New(BYTE* buffer, size_t size)
 
 	s->pool = NULL;
 	s->count = 0;
-
+	s->isAllocatedStream = TRUE;
+	s->isOwner = TRUE;
 	return s;
+}
+
+void Stream_StaticInit(wStream* s, BYTE* buffer, size_t size)
+{
+	assert(s);
+	assert(buffer);
+
+	s->buffer = s->pointer = buffer;
+	s->capacity = s->length = size;
+	s->pool = NULL;
+	s->count = 0;
+	s->isAllocatedStream = FALSE;
+	s->isOwner = FALSE;
 }
 
 void Stream_Free(wStream* s, BOOL bFreeBuffer)
 {
 	if (s)
 	{
-		if (bFreeBuffer)
+		if (bFreeBuffer && s->isOwner)
 			free(s->buffer);
 
-		free(s);
+		if (s->isAllocatedStream)
+			free(s);
 	}
 }

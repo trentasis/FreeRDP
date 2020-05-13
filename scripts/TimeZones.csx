@@ -16,6 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* Run with ' csi scripts/TimeZones.csx' from freerdp checkout root */
 
 using System;
 using System.IO;
@@ -57,36 +58,18 @@ struct TIME_ZONE_ENTRY
 
 int i;
 UInt32 index;
-const string file = @"TimeZones.txt";
+const string file = @"winpr/libwinpr/timezone/TimeZones.c";
 TimeZoneInfo.AdjustmentRule[] rules;
 StreamWriter stream = new StreamWriter(file, false);
 ReadOnlyCollection<TimeZoneInfo> timeZones = TimeZoneInfo.GetSystemTimeZones();
 
+Console.WriteLine("Updating " + file);
+stream.WriteLine("/* ");
+stream.WriteLine(" * Automatically generated with scripts/TimeZones.csx");
+stream.WriteLine(" */ ");
 stream.WriteLine();
 
-stream.WriteLine("struct _TIME_ZONE_RULE_ENTRY");
-stream.WriteLine("{");
-stream.WriteLine("\tUINT64 TicksStart;");
-stream.WriteLine("\tUINT64 TicksEnd;");
-stream.WriteLine("\tINT32 DaylightDelta;");
-stream.WriteLine("\tSYSTEMTIME StandardDate;");
-stream.WriteLine("\tSYSTEMTIME DaylightDate;");
-stream.WriteLine("};");
-stream.WriteLine("typedef struct _TIME_ZONE_RULE_ENTRY TIME_ZONE_RULE_ENTRY;");
-stream.WriteLine();
-
-stream.WriteLine("struct _TIME_ZONE_ENTRY");
-stream.WriteLine("{");
-stream.WriteLine("\tconst char* Id;");
-stream.WriteLine("\tINT32 Bias;");
-stream.WriteLine("\tBOOL SupportsDST;");
-stream.WriteLine("\tconst char* DisplayName;");
-stream.WriteLine("\tconst char* StandardName;");
-stream.WriteLine("\tconst char* DaylightName;");
-stream.WriteLine("\tTIME_ZONE_RULE_ENTRY* RuleTable;");
-stream.WriteLine("\tUINT32 RuleTableCount;");
-stream.WriteLine("};");
-stream.WriteLine("typedef struct _TIME_ZONE_ENTRY TIME_ZONE_ENTRY;");
+stream.WriteLine("#include \"TimeZones.h\"");
 stream.WriteLine();
 
 index = 0;
@@ -143,14 +126,14 @@ foreach (TimeZoneInfo timeZone in timeZones)
         stream.Write(" {0}ULL, {1}ULL, {2},", tzr.TicksStart, tzr.TicksEnd, tzr.DaylightDelta);
 
         stream.Write(" { ");
-        stream.Write("{0}, {1}, {2}, {3}, {4}, {5}",
+        stream.Write("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
             tzr.StandardDate.wYear, tzr.StandardDate.wMonth, tzr.StandardDate.wDayOfWeek,
             tzr.StandardDate.wDay, tzr.StandardDate.wHour, tzr.StandardDate.wMinute,
             tzr.StandardDate.wSecond, tzr.StandardDate.wMilliseconds);
         stream.Write(" }, ");
 
         stream.Write("{ ");
-        stream.Write("{0}, {1}, {2}, {3}, {4}, {5}",
+        stream.Write("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}",
             tzr.DaylightDate.wYear, tzr.DaylightDate.wMonth, tzr.DaylightDate.wDayOfWeek,
             tzr.DaylightDate.wDay, tzr.DaylightDate.wHour, tzr.DaylightDate.wMinute,
             tzr.DaylightDate.wSecond, tzr.DaylightDate.wMilliseconds);
@@ -168,7 +151,7 @@ foreach (TimeZoneInfo timeZone in timeZones)
 }
 
 index = 0;
-stream.WriteLine("static const TIME_ZONE_ENTRY TimeZoneTable[] =");
+stream.WriteLine("const TIME_ZONE_ENTRY TimeZoneTable[] =");
 stream.WriteLine("{");
 
 foreach (TimeZoneInfo timeZone in timeZones)
@@ -195,8 +178,7 @@ foreach (TimeZoneInfo timeZone in timeZones)
     else
     {
         tz.RuleTableCount = (UInt32)rules.Length;
-        tz.RuleTable = "&TimeZoneRuleTable_" + index;
-        tz.RuleTable = "(TIME_ZONE_RULE_ENTRY*) &TimeZoneRuleTable_" + index;
+        tz.RuleTable = "TimeZoneRuleTable_" + index;
     }
 
     stream.WriteLine("\t{");
@@ -215,6 +197,8 @@ foreach (TimeZoneInfo timeZone in timeZones)
         stream.WriteLine("\t}");
 }
 stream.WriteLine("};");
+stream.WriteLine();
+stream.WriteLine("const size_t TimeZoneTableNrElements = ARRAYSIZE(TimeZoneTable);");
 stream.WriteLine();
 
 stream.Close();

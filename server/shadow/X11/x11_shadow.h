@@ -53,7 +53,7 @@ typedef struct x11_shadow_subsystem x11ShadowSubsystem;
 
 struct x11_shadow_subsystem
 {
-	RDP_SHADOW_SUBSYSTEM_COMMON();
+	rdpShadowSubsystem common;
 
 	HANDLE thread;
 
@@ -103,10 +103,9 @@ struct x11_shadow_subsystem
 };
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-
-
 
 #ifdef __cplusplus
 }

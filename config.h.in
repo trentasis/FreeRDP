@@ -27,6 +27,8 @@
 
 /* Features */
 #cmakedefine HAVE_ALIGNED_REQUIRED
+#cmakedefine SWRESAMPLE_FOUND
+#cmakedefine AVRESAMPLE_FOUND
 
 /* Options */
 #cmakedefine WITH_PROFILER
@@ -34,6 +36,7 @@
 #cmakedefine WITH_SSE2
 #cmakedefine WITH_NEON
 #cmakedefine WITH_IPP
+#cmakedefine WITH_CUPS
 #cmakedefine WITH_NATIVE_SSPI
 #cmakedefine WITH_JPEG
 #cmakedefine WITH_WIN8
@@ -42,8 +45,6 @@
 #cmakedefine WITH_EVENTFD_READ_WRITE
 #cmakedefine HAVE_MATH_C99_LONG_DOUBLE
 
-#cmakedefine WITH_GSTREAMER_1_0
-#cmakedefine WITH_GSTREAMER_0_10
 #cmakedefine WITH_WINMM
 #cmakedefine WITH_MACAUDIO
 #cmakedefine WITH_OSS
@@ -55,12 +56,15 @@
 #cmakedefine WITH_LAME
 #cmakedefine WITH_FAAD2
 #cmakedefine WITH_FAAC
+#cmakedefine WITH_SOXR
 #cmakedefine WITH_GFX_H264
 #cmakedefine WITH_OPENH264
+#cmakedefine WITH_OPENH264_LOADING
 #cmakedefine WITH_FFMPEG
 #cmakedefine WITH_DSP_EXPERIMENTAL
 #cmakedefine WITH_DSP_FFMPEG
 #cmakedefine WITH_X264
+#cmakedefine WITH_OPENCL
 #cmakedefine WITH_MEDIA_FOUNDATION
 
 #cmakedefine WITH_VAAPI
@@ -136,6 +140,7 @@
 #cmakedefine WITH_DEBUG_CAPABILITIES
 #cmakedefine WITH_DEBUG_CHANNELS
 #cmakedefine WITH_DEBUG_CLIPRDR
+#cmakedefine WITH_DEBUG_RDPGFX
 #cmakedefine WITH_DEBUG_DVC
 #cmakedefine WITH_DEBUG_TSMF
 #cmakedefine WITH_DEBUG_KBD
@@ -163,4 +168,8 @@
 #cmakedefine WITH_DEBUG_X11_LOCAL_MOVESIZE
 #cmakedefine WITH_DEBUG_XV
 #cmakedefine WITH_DEBUG_RINGBUFFER
+
+/* Proxy */
+#cmakedefine WITH_PROXY_MODULES
+
 #endif /* FREERDP_CONFIG_H */

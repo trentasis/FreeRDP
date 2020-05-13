@@ -29,13 +29,13 @@ set(${MODULE_PREFIX}_SRCS
 	xf_gfx.c
 	xf_gfx.h
 	xf_rail.c
-	xf_rail.h
-	xf_tsmf.c
-	xf_tsmf.h
+	xf_rail.h	
 	xf_input.c
 	xf_input.h
 	xf_event.c
 	xf_event.h
+	xf_floatbar.c
+	xf_floatbar.h
 	xf_input.c
 	xf_input.h
 	xf_channels.c
@@ -56,6 +56,12 @@ set(${MODULE_PREFIX}_SRCS
 	xf_window.h
 	xf_client.c
 	xf_client.h)
+
+if (CHANNEL_TSMF_CLIENT)
+	set(${MODULE_PREFIX}_SRCS ${${MODULE_PREFIX}_SRCS}
+	xf_tsmf.c
+	xf_tsmf.h)
+endif()
 
 if(WITH_CLIENT_INTERFACE)
 	if(CLIENT_INTERFACE_SHARED)

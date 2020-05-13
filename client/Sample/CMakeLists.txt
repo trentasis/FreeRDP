@@ -19,7 +19,10 @@ set(MODULE_NAME "sfreerdp")
 set(MODULE_PREFIX "FREERDP_CLIENT_SAMPLE")
 
 set(${MODULE_PREFIX}_SRCS
-	freerdp.c)
+	tf_channels.c
+	tf_channels.h
+	tf_freerdp.h
+	tf_freerdp.c)
 
 # On windows create dll version information.
 # Vendor, product and year are already set in top level CMakeLists.txt
@@ -45,3 +48,4 @@ set(${MODULE_PREFIX}_LIBS ${${MODULE_PREFIX}_LIBS} freerdp-client freerdp)
 target_link_libraries(${MODULE_NAME} ${${MODULE_PREFIX}_LIBS})
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Client/Sample")
+install(TARGETS ${MODULE_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT client)

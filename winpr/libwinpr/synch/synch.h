@@ -32,7 +32,7 @@
 
 #ifndef _WIN32
 
-#define WINPR_PIPE_SEMAPHORE	1
+#define WINPR_PIPE_SEMAPHORE 1
 
 #if defined __APPLE__
 #include <pthread.h>
@@ -51,7 +51,7 @@
 struct winpr_mutex
 {
 	WINPR_HANDLE_DEF();
-
+	char* name;
 	pthread_mutex_t mutex;
 };
 typedef struct winpr_mutex WINPR_MUTEX;
@@ -72,6 +72,7 @@ struct winpr_event
 	int pipe_fd[2];
 	BOOL bAttached;
 	BOOL bManualReset;
+	char* name;
 };
 typedef struct winpr_event WINPR_EVENT;
 
@@ -107,6 +108,7 @@ struct winpr_timer
 	int pipe[2];
 	BOOL running;
 #endif
+	char* name;
 };
 typedef struct winpr_timer WINPR_TIMER;
 

@@ -12,6 +12,8 @@ int TestClientChannels(int argc, char* argv[])
 	FREERDP_ADDIN* pAddin;
 	FREERDP_ADDIN** ppAddins;
 
+	WINPR_UNUSED(argc);
+	WINPR_UNUSED(argv);
 	dwFlags = FREERDP_ADDIN_DYNAMIC;
 
 	printf("Enumerate all\n");
@@ -21,8 +23,8 @@ int TestClientChannels(int argc, char* argv[])
 	{
 		pAddin = ppAddins[index];
 
-		printf("Addin: Name: %s Subsystem: %s Type: %s\n",
-				pAddin->cName, pAddin->cSubsystem, pAddin->cType);
+		printf("Addin: Name: %s Subsystem: %s Type: %s\n", pAddin->cName, pAddin->cSubsystem,
+		       pAddin->cType);
 	}
 
 	freerdp_channels_addin_list_free(ppAddins);
@@ -34,12 +36,13 @@ int TestClientChannels(int argc, char* argv[])
 	{
 		pAddin = ppAddins[index];
 
-		printf("Addin: Name: %s Subsystem: %s Type: %s\n",
-				pAddin->cName, pAddin->cSubsystem, pAddin->cType);
+		printf("Addin: Name: %s Subsystem: %s Type: %s\n", pAddin->cName, pAddin->cSubsystem,
+		       pAddin->cType);
 	}
 
 	freerdp_channels_addin_list_free(ppAddins);
 
+#if defined(CHANNEL_TSMF_CLIENT)
 	printf("Enumerate tsmf video\n");
 	ppAddins = freerdp_channels_list_addins("tsmf", NULL, "video", dwFlags);
 
@@ -47,11 +50,12 @@ int TestClientChannels(int argc, char* argv[])
 	{
 		pAddin = ppAddins[index];
 
-		printf("Addin: Name: %s Subsystem: %s Type: %s\n",
-				pAddin->cName, pAddin->cSubsystem, pAddin->cType);
+		printf("Addin: Name: %s Subsystem: %s Type: %s\n", pAddin->cName, pAddin->cSubsystem,
+		       pAddin->cType);
 	}
 
 	freerdp_channels_addin_list_free(ppAddins);
+#endif
 
 	ppAddins = freerdp_channels_list_addins("unknown", NULL, NULL, dwFlags);
 
@@ -59,8 +63,8 @@ int TestClientChannels(int argc, char* argv[])
 	{
 		pAddin = ppAddins[index];
 
-		printf("Addin: Name: %s Subsystem: %s Type: %s\n",
-				pAddin->cName, pAddin->cSubsystem, pAddin->cType);
+		printf("Addin: Name: %s Subsystem: %s Type: %s\n", pAddin->cName, pAddin->cSubsystem,
+		       pAddin->cType);
 	}
 
 	freerdp_channels_addin_list_free(ppAddins);
@@ -74,8 +78,8 @@ int TestClientChannels(int argc, char* argv[])
 	{
 		pAddin = ppAddins[index];
 
-		printf("Addin: Name: %s Subsystem: %s Type: %s\n",
-				pAddin->cName, pAddin->cSubsystem, pAddin->cType);
+		printf("Addin: Name: %s Subsystem: %s Type: %s\n", pAddin->cName, pAddin->cSubsystem,
+		       pAddin->cType);
 	}
 
 	freerdp_channels_addin_list_free(ppAddins);

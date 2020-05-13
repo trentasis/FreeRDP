@@ -160,7 +160,7 @@ void xf_keyboard_key_release(xfContext* xfc, BYTE keycode, KeySym keysym)
 
 void xf_keyboard_release_all_keypress(xfContext* xfc)
 {
-	int keycode;
+	size_t keycode;
 	DWORD rdp_scancode;
 
 	for (keycode = 0; keycode < ARRAYSIZE(xfc->KeyboardState); keycode++)
@@ -172,8 +172,7 @@ void xf_keyboard_release_all_keypress(xfContext* xfc)
 			// release tab before releasing the windows key.
 			// this stops the start menu from opening on unfocus event.
 			if (rdp_scancode == RDP_SCANCODE_LWIN)
-				freerdp_input_send_keyboard_event_ex(xfc->context.input, FALSE,
-				                                     RDP_SCANCODE_TAB);
+				freerdp_input_send_keyboard_event_ex(xfc->context.input, FALSE, RDP_SCANCODE_TAB);
 
 			freerdp_input_send_keyboard_event_ex(xfc->context.input, FALSE, rdp_scancode);
 			xfc->KeyboardState[keycode] = FALSE;
@@ -196,11 +195,10 @@ void xf_keyboard_send_key(xfContext* xfc, BOOL down, BYTE keycode)
 
 	if (rdp_scancode == RDP_SCANCODE_UNKNOWN)
 	{
-		WLog_ERR(TAG,  "Unknown key with X keycode 0x%02"PRIx8"", keycode);
+		WLog_ERR(TAG, "Unknown key with X keycode 0x%02" PRIx8 "", keycode);
 	}
-	else if (rdp_scancode == RDP_SCANCODE_PAUSE &&
-	         !xf_keyboard_key_pressed(xfc, XK_Control_L)
-	         && !xf_keyboard_key_pressed(xfc, XK_Control_R))
+	else if (rdp_scancode == RDP_SCANCODE_PAUSE && !xf_keyboard_key_pressed(xfc, XK_Control_L) &&
+	         !xf_keyboard_key_pressed(xfc, XK_Control_R))
 	{
 		/* Pause without Ctrl has to be sent as a series of keycodes
 		 * in a single input PDU.  Pause only happens on "press";
@@ -232,13 +230,13 @@ int xf_keyboard_read_keyboard_state(xfContext* xfc)
 
 	if (!xfc->remote_app)
 	{
-		XQueryPointer(xfc->display, xfc->window->handle,
-		              &wdummy, &wdummy, &dummy, &dummy, &dummy, &dummy, &state);
+		XQueryPointer(xfc->display, xfc->window->handle, &wdummy, &wdummy, &dummy, &dummy, &dummy,
+		              &dummy, &state);
 	}
 	else
 	{
-		XQueryPointer(xfc->display, DefaultRootWindow(xfc->display),
-		              &wdummy, &wdummy, &dummy, &dummy, &dummy, &dummy, &state);
+		XQueryPointer(xfc->display, DefaultRootWindow(xfc->display), &wdummy, &wdummy, &dummy,
+		              &dummy, &dummy, &dummy, &state);
 	}
 
 	return state;
@@ -292,8 +290,7 @@ static BOOL xf_keyboard_set_key_state(xfContext* xfc, BOOL on, int keysym)
 		return FALSE;
 	}
 
-	return XkbLockModifiers(xfc->display, XkbUseCoreKbd, keysymMask,
-	                        on ? keysymMask : 0);
+	return XkbLockModifiers(xfc->display, XkbUseCoreKbd, keysymMask, on ? keysymMask : 0);
 }
 
 UINT32 xf_keyboard_get_toggle_keys_state(xfContext* xfc)
@@ -317,6 +314,28 @@ UINT32 xf_keyboard_get_toggle_keys_state(xfContext* xfc)
 	return toggleKeysState;
 }
 
+static void xk_keyboard_update_modifier_keys(xfContext* xfc)
+{
+	int state;
+	size_t i;
+	KeyCode keycode;
+	int keysyms[] = { XK_Shift_L,   XK_Shift_R,   XK_Alt_L,   XK_Alt_R,
+		              XK_Control_L, XK_Control_R, XK_Super_L, XK_Super_R };
+
+	xf_keyboard_clear(xfc);
+
+	state = xf_keyboard_read_keyboard_state(xfc);
+
+	for (i = 0; i < ARRAYSIZE(keysyms); i++)
+	{
+		if (xf_keyboard_get_key_state(xfc, state, keysyms[i]))
+		{
+			keycode = XKeysymToKeycode(xfc->display, keysyms[i]);
+			xfc->KeyboardState[keycode] = TRUE;
+		}
+	}
+}
+
 void xf_keyboard_focus_in(xfContext* xfc)
 {
 	rdpInput* input;
@@ -330,14 +349,14 @@ void xf_keyboard_focus_in(xfContext* xfc)
 	input = xfc->context.input;
 	syncFlags = xf_keyboard_get_toggle_keys_state(xfc);
 	input->FocusInEvent(input, syncFlags);
+	xk_keyboard_update_modifier_keys(xfc);
 
 	/* finish with a mouse pointer position like mstsc.exe if required */
 
 	if (xfc->remote_app)
 		return;
 
-	if (XQueryPointer(xfc->display, xfc->window->handle, &w, &w, &d, &d, &x, &y,
-	                  &state))
+	if (XQueryPointer(xfc->display, xfc->window->handle, &w, &w, &d, &d, &x, &y, &state))
 	{
 		if (x >= 0 && x < xfc->window->width && y >= 0 && y < xfc->window->height)
 		{
@@ -347,9 +366,7 @@ void xf_keyboard_focus_in(xfContext* xfc)
 	}
 }
 
-static int xf_keyboard_execute_action_script(xfContext* xfc,
-        XF_MODIFIER_KEYS* mod,
-        KeySym keysym)
+static int xf_keyboard_execute_action_script(xfContext* xfc, XF_MODIFIER_KEYS* mod, KeySym keysym)
 {
 	int index;
 	int count;
@@ -365,9 +382,8 @@ static int xf_keyboard_execute_action_script(xfContext* xfc,
 	if (!xfc->actionScriptExists)
 		return 1;
 
-	if ((keysym == XK_Shift_L) || (keysym == XK_Shift_R) ||
-	    (keysym == XK_Alt_L) || (keysym == XK_Alt_R) ||
-	    (keysym == XK_Control_L) || (keysym == XK_Control_R))
+	if ((keysym == XK_Shift_L) || (keysym == XK_Shift_R) || (keysym == XK_Alt_L) ||
+	    (keysym == XK_Alt_R) || (keysym == XK_Control_L) || (keysym == XK_Control_R))
 	{
 		return 1;
 	}
@@ -388,12 +404,15 @@ static int xf_keyboard_execute_action_script(xfContext* xfc,
 	if (mod->Alt)
 		strcat(combination, "Alt+");
 
+	if (mod->Super)
+		strcat(combination, "Super+");
+
 	strcat(combination, keyStr);
 	count = ArrayList_Count(xfc->keyCombinations);
 
 	for (index = 0; index < count; index++)
 	{
-		keyCombination = (char*) ArrayList_GetItem(xfc->keyCombinations, index);
+		keyCombination = (char*)ArrayList_GetItem(xfc->keyCombinations, index);
 
 		if (_stricmp(keyCombination, combination) == 0)
 		{
@@ -405,8 +424,8 @@ static int xf_keyboard_execute_action_script(xfContext* xfc,
 	if (!match)
 		return 1;
 
-	sprintf_s(command, sizeof(command), "%s key %s",
-	          xfc->context.settings->ActionScript, combination);
+	sprintf_s(command, sizeof(command), "%s key %s", xfc->context.settings->ActionScript,
+	          combination);
 	keyScript = popen(command, "r");
 
 	if (!keyScript)
@@ -489,8 +508,8 @@ BOOL xf_keyboard_handle_special_keys(xfContext* xfc, KeySym keysym)
 		if (mod.Ctrl && mod.Alt)
 		{
 			/* Ctrl-Alt-C: toggle control */
-			xf_toggle_control(xfc);
-			return TRUE;
+			if (xf_toggle_control(xfc))
+				return TRUE;
 		}
 	}
 
@@ -608,9 +627,8 @@ void xf_keyboard_handle_special_keys_release(xfContext* xfc, KeySym keysym)
 
 BOOL xf_keyboard_set_indicators(rdpContext* context, UINT16 led_flags)
 {
-	xfContext* xfc = (xfContext*) context;
-	xf_keyboard_set_key_state(xfc, led_flags & KBD_SYNC_SCROLL_LOCK,
-	                          XK_Scroll_Lock);
+	xfContext* xfc = (xfContext*)context;
+	xf_keyboard_set_key_state(xfc, led_flags & KBD_SYNC_SCROLL_LOCK, XK_Scroll_Lock);
 	xf_keyboard_set_key_state(xfc, led_flags & KBD_SYNC_NUM_LOCK, XK_Num_Lock);
 	xf_keyboard_set_key_state(xfc, led_flags & KBD_SYNC_CAPS_LOCK, XK_Caps_Lock);
 	xf_keyboard_set_key_state(xfc, led_flags & KBD_SYNC_KANA_LOCK, XK_Kana_Lock);
@@ -624,7 +642,8 @@ BOOL xf_keyboard_set_ime_status(rdpContext* context, UINT16 imeId, UINT32 imeSta
 		return FALSE;
 
 	WLog_WARN(TAG,
-	          "KeyboardSetImeStatus(unitId=%04"PRIx16", imeState=%08"PRIx32", imeConvMode=%08"PRIx32") ignored",
+	          "KeyboardSetImeStatus(unitId=%04" PRIx16 ", imeState=%08" PRIx32
+	          ", imeConvMode=%08" PRIx32 ") ignored",
 	          imeId, imeState, imeConvMode);
 	return TRUE;
 }

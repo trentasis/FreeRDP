@@ -4,11 +4,15 @@ SCRIPT_PATH=$(dirname "${BASH_SOURCE[0]}")
 SCRIPT_PATH=$(realpath "$SCRIPT_PATH")
 
 if [ -z $BUILD_ARCH ]; then
-	BUILD_ARCH="armeabi armeabi-v7a mips mips64 x86 x86_64 arm64-v8a"
+	BUILD_ARCH="armeabi-v7a x86 x86_64 arm64-v8a"
 fi
 
 if [ -z $NDK_TARGET ]; then
 	NDK_TARGET=21
+fi
+
+if [ -z $CMAKE_PROGRAM ]; then
+  	CMAKE_PROGRAM=$(find $ANDROID_SDK/cmake -name cmake -type f -executable -print -quit)
 fi
 
 if [ -z $CCACHE ]; then
@@ -17,6 +21,10 @@ fi
 
 if [ -z $ANDROID_NDK ]; then
 	ANDROID_NDK="missing"
+fi
+
+if [ -z $ANDROID_SDK ]; then
+	ANDROID_SDK="missing"
 fi
 
 if [ -z $BUILD_DST ]; then
@@ -41,6 +49,8 @@ function common_help {
 	echo "$(BASHSOURCE[0]) supports the following arguments:"
 	echo "	--ndk	The base directory of your android NDK defa"
 	echo "			ANDROID_NDK=$ANDROID_NDK"
+	echo "	--sdk	The base directory of your android SDK defa"
+	echo "			ANDROID_SDK=$ANDROID_SDK"
 	echo "	--arch	A list of architectures to build"
 	echo "			BUILD_ARCH=$BUILD_ARCH"
 	echo "	--dst	The destination directory for include and library files"
@@ -84,6 +94,12 @@ function common_parse_arguments {
 
 			--ndk)
 			ANDROID_NDK="$2"
+			shift
+			;;
+
+			--sdk)
+			ANDROID_SDK="$2"
+  	        CMAKE_PROGRAM=$(find $ANDROID_SDK/cmake -name cmake -type f -executable -print -quit)
 			shift
 			;;
 
@@ -136,6 +152,11 @@ function common_check_requirements {
 		exit 1
 	fi
 
+	if [[ ! -d $ANDROID_SDK ]];
+	then
+		echo "export ANDROID_SDK to point to your SDK location."
+		exit 1
+	fi
 	if [[ -z $BUILD_DST ]];
 	then
 		echo "Destination directory not valid"
@@ -174,13 +195,11 @@ function common_check_requirements {
 		NDK_BUILD=ndk-build
 	fi
 
-	if [[ -z $NDK_BUILD ]];
-	then
-		echo "Android ndk-build not detected"
-		exit 1
-	fi
+    if [ -z $CMAKE_PROGRAM ]; then
+    	CMAKE_PROGRAM=$(find $ANDROID_SDK/cmake -name cmake -type f -executable -print -quit)
+    fi
 
-	for CMD in make git cmake $NDK_BUILD
+	for CMD in make git $CMAKE_PROGRAM $NDK_BUILD
 	do
 		if ! type $CMD >/dev/null; then
 			echo "Command $CMD not found. Install and add it to the PATH."
@@ -204,22 +223,31 @@ function common_update {
 		echo "Invalid arguments to update function $@"
 		exit 1
 	fi
+	SCM_URL=$1
+	SCM_TAG=$2
+	BUILD_SRC=$3
 
 	echo "Preparing checkout..."
 	BASE=$(pwd)
-	if [[ ! -d $3 ]];
+	CACHE=$SCRIPT_PATH/../cache
+	common_run mkdir -p $CACHE
+	TARFILE="$CACHE/$SCM_TAG.tar.gz"
+	
+	
+	if [[ ! -f "$TARFILE" ]];
 	then
-		common_run mkdir -p $3
-		common_run cd $3
-		common_run git clone $1 $3
+		common_run wget -O "$TARFILE" "$SCM_URL/archive/$SCM_TAG.tar.gz"
 	fi
 
+	if [[ -d $BUILD_SRC ]];
+	then
+		common_run rm -rf $BUILD_SRC
+	fi
+	common_run mkdir -p $BUILD_SRC
+	common_run cd $BUILD_SRC
+	common_run tar zxf "$TARFILE" --strip 1
 	common_run cd $BASE
-	common_run cd $3
-	common_run git fetch
-	common_run git reset --hard HEAD
-	common_run git checkout $2
-	common_run cd $BASE
+
 }
 
 function common_clean {

@@ -166,7 +166,7 @@ void LinkedList_Clear(wLinkedList* list)
 
 static wLinkedListNode* LinkedList_Create(wLinkedList* list, void* value)
 {
-	wLinkedListNode* node = (wLinkedListNode*) calloc(1, sizeof(wLinkedListNode));
+	wLinkedListNode* node = (wLinkedListNode*)calloc(1, sizeof(wLinkedListNode));
 
 	if (!node)
 		return NULL;
@@ -320,7 +320,7 @@ BOOL LinkedList_Enumerator_MoveNext(wLinkedList* list)
 	return TRUE;
 }
 
-static BOOL default_equal_function(void* objA, void* objB)
+static BOOL default_equal_function(const void* objA, const void* objB)
 {
 	return objA == objB;
 }
@@ -332,7 +332,7 @@ static BOOL default_equal_function(void* objA, void* objB)
 wLinkedList* LinkedList_New(void)
 {
 	wLinkedList* list = NULL;
-	list = (wLinkedList*) calloc(1, sizeof(wLinkedList));
+	list = (wLinkedList*)calloc(1, sizeof(wLinkedList));
 
 	if (list)
 	{

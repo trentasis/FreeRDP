@@ -33,6 +33,11 @@
 #define USE_SHM
 #endif
 
+/* uClibc and uClibc-ng don't provide O_TMPFILE */
+#ifndef O_TMPFILE
+#define O_TMPFILE (020000000 | O_DIRECTORY)
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #ifdef USE_SHM
@@ -48,6 +53,7 @@
 
 #include "../config.h"
 #include "uwac-os.h"
+#include "uwac-utils.h"
 
 static int set_cloexec_or_close(int fd)
 {
@@ -119,8 +125,7 @@ static ssize_t recvmsg_cloexec_fallback(int sockfd, struct msghdr* msg, int flag
 
 	for (; cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg))
 	{
-		if (cmsg->cmsg_level != SOL_SOCKET ||
-		    cmsg->cmsg_type != SCM_RIGHTS)
+		if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
 			continue;
 
 		data = CMSG_DATA(cmsg);
@@ -212,11 +217,11 @@ static int create_tmpfile_cloexec(char* tmpname)
 int uwac_create_anonymous_file(off_t size)
 {
 	static const char template[] = "/weston-shared-XXXXXX";
-	const char* path;
+	size_t length;
 	char* name;
+	const char* path;
 	int fd;
 	int ret;
-	size_t length;
 	path = getenv("XDG_RUNTIME_DIR");
 
 	if (!path)
@@ -225,15 +230,20 @@ int uwac_create_anonymous_file(off_t size)
 		return -1;
 	}
 
-	length = strlen(path) + sizeof(template);
-	name = malloc(length);
+	fd = open(path, O_TMPFILE | O_RDWR | O_EXCL, 0600);
 
-	if (!name)
-		return -1;
+	if (fd < 0)
+	{
+		length = strlen(path) + sizeof(template);
+		name = xmalloc(length);
 
-	snprintf(name, length, "%s%s", path, template);
-	fd = create_tmpfile_cloexec(name);
-	free(name);
+		if (!name)
+			return -1;
+
+		snprintf(name, length, "%s%s", path, template);
+		fd = create_tmpfile_cloexec(name);
+		free(name);
+	}
 
 	if (fd < 0)
 		return -1;

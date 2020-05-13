@@ -21,6 +21,8 @@ set(MODULE_PREFIX "FREERDP_COMMON")
 set(${MODULE_PREFIX}_SRCS
 	addin.c
 	settings.c
+	settings_getters.c
+	settings_str.c
 	assistance.c)
 
 freerdp_module_add(${${MODULE_PREFIX}_SRCS})

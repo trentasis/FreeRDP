@@ -6,7 +6,7 @@ if (file.canRead()) {
 }
    
 if (!hasProperty('RELEASE_STORE_FILE')) {
-    ext.RELEASE_STORE_FILE=''
+    ext.RELEASE_STORE_FILE='nokeyfile'
 }
 if (!hasProperty('RELEASE_KEY_ALIAS')) {
     ext.RELEASE_KEY_ALIAS=''
@@ -29,9 +29,11 @@ def getVersionName = { ->
 
 ext {
     versionName = properties.get('VERSION_NAME', getVersionName())
+    versionCode = properties.get('VERSION_CODE', 100)
 
     println '----------------- Project configuration -------------------'
     println 'VERSION_NAME:       ' + versionName
+    println 'VERSION_CODE:       ' + versionCode
     println 'RELEASE_STORE_FILE: '+ RELEASE_STORE_FILE
     println 'RELEASE_KEY_ALIAS:  '+ RELEASE_KEY_ALIAS
     println '-----------------------------------------------------------'
@@ -43,7 +45,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.android.tools.build:gradle:3.2.1'
     }
 }
 

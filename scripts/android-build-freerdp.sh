@@ -81,9 +81,10 @@ common_run mkdir -p $BUILD_SRC
 
 CMAKE_CMD_ARGS="-DANDROID_NDK=$ANDROID_NDK \
 	-DANDROID_NATIVE_API_LEVEL=android-${NDK_TARGET} \
-	-DCMAKE_TOOLCHAIN_FILE=$SRC_DIR/cmake/AndroidToolchain.cmake \
+	-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
 	-DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-	-DFREERDP_EXTERNAL_PATH=$BUILD_DST"
+	-DFREERDP_EXTERNAL_PATH=$BUILD_DST \
+	-DCMAKE_MAKE_PROGRAM=make"
 
 BASE=$(pwd)
 for ARCH in $BUILD_ARCH
@@ -97,7 +98,7 @@ do
                 --src $BUILD_SRC/jpeg --dst $BUILD_DST \
                 --ndk $ANDROID_NDK \
                 --arch $ARCH \
-		--target $NDK_TARGET \
+                --target $NDK_TARGET \
                 --tag $JPEG_TAG
         fi
         CMAKE_CMD_ARGS="$CMAKE_CMD_ARGS -DWITH_JPEG=ON"
@@ -112,7 +113,7 @@ do
                 --src $BUILD_SRC/openh264 --dst $BUILD_DST \
                 --ndk $ANDROID_NDK \
                 --arch $ARCH \
-		--target $NDK_TARGET \
+                --target $NDK_TARGET \
                 --tag $OPENH264_TAG
         fi
         CMAKE_CMD_ARGS="$CMAKE_CMD_ARGS -DWITH_OPENH264=ON"
@@ -139,7 +140,7 @@ do
 	common_run mkdir -p $BUILD_SRC/freerdp-build/$ARCH
 	common_run cd $BUILD_SRC/freerdp-build/$ARCH
 	common_run export ANDROID_NDK=$ANDROID_NDK
-	common_run cmake $CMAKE_CMD_ARGS \
+	common_run $CMAKE_PROGRAM $CMAKE_CMD_ARGS \
 		-DANDROID_ABI=$ARCH \
 		-DCMAKE_INSTALL_PREFIX=$BUILD_DST/$ARCH \
 		-DCMAKE_INSTALL_LIBDIR=. \

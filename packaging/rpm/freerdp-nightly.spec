@@ -40,6 +40,7 @@ BuildRequires: libXv-devel
 BuildRequires: libXdamage-devel
 BuildRequires: libXtst-devel
 BuildRequires: cups-devel
+BuildRequires: cairo-devel
 BuildRequires: pcsc-lite-devel
 BuildRequires: uuid-devel
 BuildRequires: libxml2-devel
@@ -63,7 +64,7 @@ BuildRequires: wayland-devel
 BuildRequires: libjpeg-devel
 BuildRequires: libavutil-devel
 BuildRequires: libavcodec-devel
-BuildRequires: libavresample-devel
+BuildRequires: libswresample-devel
 %endif
 # fedora 21+
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
@@ -122,10 +123,11 @@ cp %{_topdir}/SOURCES/source_version freerdp-nightly-%{version}/.source_version
 %if 0%{?fedora} < 21 || 0%{?rhel} < 8
         -DWITH_WAYLAND=OFF \
 %endif
-        -DWITH_GSSAPI=ON \
+        -DWITH_GSSAPI=OFF \
         -DCHANNEL_URBDRC=ON \
         -DCHANNEL_URBDRC_CLIENT=ON \
         -DWITH_SERVER=ON \
+        -DWITH_CAIRO=ON \
         -DBUILD_TESTING=OFF \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_INSTALL_PREFIX=%{INSTALL_PREFIX} \

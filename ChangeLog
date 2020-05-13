@@ -1,3 +1,106 @@
+# 2020-05-05  Version 2.1.0
+
+Important notes:
+
+* fix multiple CVEs: CVE-2020-11039, CVE-2020-11038, CVE-2020-11043, CVE-2020-11040, CVE-2020-11041,
+  CVE-2020-11019, CVE-2020-11017, CVE-2020-11018
+* fix multiple leak and crash issues (#6129, #6128, #6127, #6110, #6081, #6077)
+
+Noteworthy features and improvements:
+* Fixed sound issues (#6043)
+* New expert command line options /tune and /tune-list to modify all client
+  settings in a generic way.
+* Fixes for smartcard cache, this improves compatibility of smartcard devices
+  with newer smartcard channel.
+* Shadow server can now be instructed to listen to multiple interfaces.
+* Improved server certificate support (#6052)
+* Various fixes for wayland client (fullscreen, mouse wheel, ...)
+* Fixed large mouse pointer support, now mouse pointers > 96x96 pixel are visible.
+* USB redirection command line improvements (filter options)
+* Various translation improvements for android and ios clients
+
+For a complete and detailed change log since the last release candidate run:
+git log 2.0.0..2.1.0
+
+
+# 2020-04-09  Version 2.0.0
+
+Important notes:
+
+* fix multiple CVEs: CVE-2020-11521 CVE-2020-11522 CVE-2020-11523 CVE-2020-11524 CVE-2020-11525 CVE-2020-11526
+* fix multiple other security related issues (#6005, #6006, #6007, #6008, #6009, #6010, #6011, #6012, #6013)
+* sha256 is now used instead of sha1 to fingerprint certificates. This will
+  invalidate all hosts in FreeRDP known_hosts2 file and causes a prompt if a
+  new connection is established after the update
+
+Noteworthy features and improvements:
+
+* First version of the RDP proxy was added (#5372) - thanks to @kubistika
+* Smartcard received some refactoring. Missing functions were added and input
+  validation was improved (#5884)
+* A new option /cert that unifies all certificate related options (#5880)  
+  The old options (cert-ignore, cert-deny, cert-name, cert-tofu) are still
+  available but marked as deprecated
+* Support for Remote Assistance Protocol Version 2 [MS-RA]
+* The DirectFB client was removed because it was unmaintained
+* Unified initialization of OrderSupport
+* Fix for licensing against Windows Server 2003
+* Font smoothing is now enabled per default
+* Flatpack support was added
+* Smart scaling for Wayland using libcairo was added (#5215)
+* Unified update->BeginPaint and update->EndPaint
+* An image scaling API for software drawing was added
+* Rail was updated to the latest spec version 28.0
+* Support for H.264 in the shadow server is now detected at runtime
+* Add mask=<value> option for /gfx and /gfx-h264  (#5771)
+* Code reformatting (#5667)
+* A new option /timeout was added to adjust the TCP ACK timeout (#5987)
+
+For a complete and detailed change log since the last release candidate run:
+git log 2.0.0-rc4..2.0.0
+
+
+# 2018-11-19	Version 2.0.0-rc4
+
+FreeRDP 2.0.0-rc4 is the fifth release candidate for 2.0.0. Although it mainly
+addresses security and stability there are some new features as well.
+
+Noteworthy features and improvements:
+
+* fix multiple reported CVEs (#5031)
+* gateway: multiple fixes and improvements (#3600, #4787, #4902, #4964, #4947,
+  #4952, #4938)
+* client/X11: support for rail (remote app) icons was added (#5012)
+* licensing: the licensing code was re-worked. Per-device licenses
+  are now saved on the client and used on re-connect.
+	WARNING: this is a change in FreeRDP behavior regarding licensing. If the old
+	behavior is required, or no licenses should be saved use the
+	new command line option +old-license (#4979)
+* improve order handling - only orders that were enabled
+  during capability exchange are accepted (#4926).
+	WARNING and NOTE: some servers do improperly send orders that weren't negotiated,
+	for such cases the new command line option /relax-order-checks was added to
+	disable the strict order checking. If connecting to xrdp the options
+	/relax-order-checks *and* +glyph-cache are required.
+* /smartcard has now support for substring filters (#4840)
+  for details see https://github.com/FreeRDP/FreeRDP/wiki/smartcard-logon
+* add support to set tls security level (for openssl >= 1.1.0)
+  - default level is set to 1
+  - the new command line option /tls-seclevel:[LEVEL] allows to set
+	  a different level if required
+* add new command line option /smartcard-logon to allow
+  smartcard login (currently only with RDP security) (#4842)
+* new command line option: /window-position to allow positioning
+  the window on startup (#5018)
+* client/X11: set window title before mapping (#5023)
+* rdpsnd/audin (mostly server side) add support for audio re-sampling using soxr or ffmpeg
+* client/Android: add Japanese translation (#4906)
+* client/Android: add Korean translation (#5029)
+
+For a complete and detailed change log since the last release candidate run:
+git log 2.0.0-rc3..2.0.0-rc4
+
+
 # 2018-08-01	Version 2.0.0-rc3
 
 FreeRDP 2.0.0-rc3 is the fourth release candidate for 2.0.0.

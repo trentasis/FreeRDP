@@ -40,7 +40,7 @@ struct _DRIVE_FILE
 	HANDLE file_handle;
 	HANDLE find_handle;
 	WIN32_FIND_DATAW find_data;
-	WCHAR* basepath;
+	const WCHAR* basepath;
 	WCHAR* fullpath;
 	WCHAR* filename;
 	BOOL delete_pending;
@@ -52,8 +52,8 @@ struct _DRIVE_FILE
 };
 
 DRIVE_FILE* drive_file_new(const WCHAR* base_path, const WCHAR* path, UINT32 PathLength, UINT32 id,
-                           UINT32 DesiredAccess, UINT32 CreateDisposition,
-                           UINT32 CreateOptions, UINT32 FileAttributes, UINT32 SharedAccess);
+                           UINT32 DesiredAccess, UINT32 CreateDisposition, UINT32 CreateOptions,
+                           UINT32 FileAttributes, UINT32 SharedAccess);
 BOOL drive_file_free(DRIVE_FILE* file);
 
 BOOL drive_file_open(DRIVE_FILE* file);
