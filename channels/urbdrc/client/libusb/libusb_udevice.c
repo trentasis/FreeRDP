@@ -829,6 +829,7 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 				Buffer[len - 1] = '\0';
 				*BufferSize = (BYTE)len;
 			}
+			WLog_INFO(TAG, "DeviceTextDescription [%" PRIu8 "]", *BufferSize);
 		}
 		break;
 
@@ -843,6 +844,7 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 				text[i] = (WCHAR)deviceLocation[i];
 			text[len++] = '\0';
 			*BufferSize = (UINT8)(len * sizeof(WCHAR));
+			WLog_INFO(TAG, "DeviceTextLocationInformation %s [%" PRIuz "]", deviceLocation, len);
 			break;
 
 		default:
