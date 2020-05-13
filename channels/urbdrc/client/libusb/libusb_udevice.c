@@ -804,31 +804,23 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 				           "ERROR num %d, iProduct: %" PRIu8 "!",
 				           ret, devDescriptor->iProduct);
 
-				len = MIN(sizeof(strDesc), inSize / sizeof(WCHAR));
+				len = MIN(sizeof(strDesc) - 1, (inSize - 1) / sizeof(WCHAR));
 				for (i = 0; i < len; i++)
 					text[i] = (WCHAR)strDesc[i];
-
-				*BufferSize = (BYTE)(len * 2);
+				text[len - 1] = L'\0';
 			}
 			else
 			{
-				/* ret and slen should be equals, but you never know creativity
-				 * of device manufacturers...
-				 * So also check the string length returned as server side does
-				 * not honor strings with multi '\0' characters well.
-				 */
-				const size_t rchar = _wcsnlen((WCHAR*)&data[2], sizeof(data) / 2);
-				len = MIN((BYTE)ret, slen);
-				len = MIN(len, inSize);
-				len = MIN(len, rchar * 2 + sizeof(WCHAR));
-				memcpy(Buffer, &data[2], len);
+				size_t len = MIN(inSize, slen);
+				memcpy(Text, &data[2], len);
 
 				/* Just as above, the returned WCHAR string should be '\0'
 				 * terminated, but never trust hardware to conform to specs... */
-				Buffer[len - 2] = '\0';
-				Buffer[len - 1] = '\0';
-				*BufferSize = (BYTE)len;
+				Text[len - 1] = L'\0';
 			}
+
+			len = _wcsnlen(text, len) + 1;
+			*BufferSize = (BYTE)len * sizeof(WCHAR);
 			WLog_INFO(TAG, "DeviceTextDescription [%" PRIu8 "]", *BufferSize);
 		}
 		break;
