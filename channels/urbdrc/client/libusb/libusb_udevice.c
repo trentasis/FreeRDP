@@ -772,8 +772,8 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 	urbdrc = pdev->urbdrc;
 	devDescriptor = pdev->devDescriptor;
 
-	WLog_INFO(TAG, "[%s] TextType=%" PRIu32 ", LocaleId=%" PRIu32 ", BufferSize=%" PRIu8, TextType,
-	          LocaleId, inSize);
+	WLog_INFO(TAG, "[%s] TextType=%" PRIu32 ", LocaleId=%" PRIu32 ", BufferSize=%" PRIu8,
+	          __FUNCTION__, TextType, LocaleId, inSize);
 	switch (TextType)
 	{
 		case DeviceTextDescription:
@@ -838,7 +838,7 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 			sprintf_s(deviceLocation, sizeof(deviceLocation),
 			          "Port_#%04" PRIu8 ".Hub_#%04" PRIu8 "", device_address, bus_number);
 
-			len = strnlen(deviceLocation, MIN(sizeof(deviceLocation), inSize - 1));
+			len = strnlen(deviceLocation, MIN(sizeof(deviceLocation) - 1, inSize - 1));
 			for (i = 0; i < len; i++)
 				text[i] = (WCHAR)deviceLocation[i];
 			text[len++] = '\0';
