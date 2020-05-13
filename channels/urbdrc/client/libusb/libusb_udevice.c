@@ -1190,9 +1190,14 @@ static BOOL libusb_udev_control_transfer(IUDEVICE* idev, UINT32 RequestId, UINT3
 	if (!pdev || !pdev->urbdrc)
 		return FALSE;
 
+	WLog_INFO(TAG,
+	          "[%s] bmRequestType=0x%02" PRIx8 ", Request=0x%02" PRIx8 ", Value=0x%04" PRIu16
+	          ", Index=%" PRIu16 " BufferSize=%" PRIu32 ", Timeout=%" PRIu32,
+	          __FUNCTION__, bmRequestType, Request, Value, Index, *BufferSize, Timeout);
 	status = libusb_control_transfer(pdev->libusb_handle, bmRequestType, Request, Value, Index,
 	                                 Buffer, *BufferSize, Timeout);
 
+	WLog_INFO(TAG, "[%s] return %d", __FUNCTION__, status);
 	if (status >= 0)
 		*BufferSize = (UINT32)status;
 	else
