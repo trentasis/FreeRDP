@@ -406,5 +406,5 @@ void urbdrc_dump_message(wLog* log, BOOL client, BOOL write, wStream* s)
 	           ", FunctionId=%08" PRIx32 ", length=%" PRIdz,
 	           type, call_to_string(client, InterfaceId, FunctionId), FunctionId, InterfaceId,
 	           MessageId, FunctionId, length);
-	winpr_HexLogDump(log, WLOG_INFO, Stream_Buffer(s), Stream_Length(s));
+	winpr_HexLogDump(log, WLOG_INFO, Stream_Buffer(s), pos);
 }

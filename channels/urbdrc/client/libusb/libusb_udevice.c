@@ -1067,7 +1067,7 @@ static void libusb_udev_channel_closed(IUDEVICE* idev)
 		if (channel)
 		{
 			/* Notify the server the device is no longer available. */
-			channel->Write(channel, 0, NULL, NULL);
+			stream_write_and_free(&urbdrc->iface, channel, NULL);
 		}
 		urbdrc->udevman->unregister_udevice(urbdrc->udevman, busNr, devNr);
 	}
