@@ -778,8 +778,8 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 	{
 		case DeviceTextDescription:
 		{
-			BYTE data[UINT8_MAX + 2] = { 0 };
-			int len = MIN(inSize, UINT8_MAX);
+			BYTE data[UINT16_MAX] = { 0 };
+			int len = UINT16_MAX;
 
 			ret = libusb_get_string_descriptor(pdev->libusb_handle, devDescriptor->iProduct,
 			                                   LocaleId, data, len);
