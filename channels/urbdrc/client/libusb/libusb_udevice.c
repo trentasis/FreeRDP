@@ -779,10 +779,10 @@ static UINT32 libusb_udev_control_query_device_text(IUDEVICE* idev, UINT32 TextT
 		case DeviceTextDescription:
 		{
 			/*
-			 * MAX_CTRL_BUFFER_LENGTH 512 for control transfers
+			 * MAX_CTRL_BUFFER_LENGTH 256 for control transfers
 			 */
-			BYTE data[512] = { 0 };
-			int len = 512;
+			BYTE data[256] = { 0 };
+			int len = 256;
 
 			ret = libusb_get_string_descriptor(pdev->libusb_handle, devDescriptor->iProduct,
 			                                   LocaleId, data, len);
